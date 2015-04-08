@@ -15,9 +15,12 @@
 (ns org.zalando.stups.mint.storage.api
   (:require [org.zalando.stups.friboo.system.http :refer [def-http-component]]
             [org.zalando.stups.mint.storage.sql :as sql]
+            [clojure.data.json :refer [JSONWriter]]
             [ring.util.response :refer :all]
             [org.zalando.stups.friboo.ring :refer :all]
-            [org.zalando.stups.friboo.log :as log]))
+            [org.zalando.stups.friboo.log :as log])
+  (:import (java.io PrintWriter)
+           (java.sql Timestamp)))
 
 ; define the API component and its dependencies
 (def-http-component API "api/mint-api.yaml" [db])
@@ -26,6 +29,20 @@
   {:http-port 8080})
 
 ;; credentials
+
+(defn- serialize-sql-timestamp
+  "Serializes a sql timestamp to json."
+  [^Timestamp timestamp #^PrintWriter out]
+  (.print out (int (/ (.getTime timestamp) 1000))))
+
+; add json capability to java.sql.Timestamp
+(extend Timestamp JSONWriter
+  {:-write serialize-sql-timestamp})
+
+(defn keywordize
+  "Maps a String->Any map to Keyword->Any."
+  [m]
+  (into {} (map (fn [[k v]] [(keyword k) v]) m)))
 
 (defn read-credentials
   "Returns all credentials."
@@ -50,3 +67,35 @@
   (-> (sql/read-credential-sensitive parameters {:connection db})
       (single-response)
       (content-type-json)))
+
+(defn create-credential!
+  "Creates a new credential entry."
+  [{:keys [application_id credential]} _ db]
+  (log/debug "Creating new credential entry for %s..." application_id)
+  (sql/create-credential! (assoc (keywordize credential) :application_id application_id) {:connection db})
+  (log/info "Created new credential entry %s." application_id)
+  (response nil))
+
+(defn delete-credential!
+  "Deletes a credential entry."
+  [parameters _ db]
+  (log/debug "Deleting credential entry of %s..." parameters)
+  (sql/delete-credential! parameters {:connection db})
+  (log/info "Deleted credential entry %s." parameters)
+  (response nil))
+
+(defn update-application-password!
+  "Updates an application password."
+  [{:keys [application_id credential]} _ db]
+  (log/debug "Updating credential application password for %s..." application_id)
+  (sql/update-application-password! (assoc (keywordize credential) :application_id application_id) {:connection db})
+  (log/info "Updated credential application password for %s." application_id)
+  (response nil))
+
+(defn update-client-secret!
+  "Updates a client secret."
+  [{:keys [application_id credential]} _ db]
+  (log/debug "Updating credential client secret for %s..." application_id)
+  (sql/update-client-secret! (assoc (keywordize credential) :application_id application_id) {:connection db})
+  (log/info "Updated credential client secret for %s." application_id)
+  (response nil))

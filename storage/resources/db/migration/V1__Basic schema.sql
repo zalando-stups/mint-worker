@@ -2,8 +2,6 @@
 CREATE TABLE credential (
 -- the official application ID, like 'kio' or 'pierone'
   application_id          TEXT NOT NULL,
--- status of current sync
-  status                  TEXT NOT NULL,
 
 -- status of rotation
   last_password_rotation  TIMESTAMP,
@@ -11,7 +9,7 @@ CREATE TABLE credential (
 
 -- service user credentials
   application_username    TEXT,
-  application_secret      TEXT,
+  application_password    TEXT,
 
 -- oauth 2.0 secrets
   client_id               TEXT,

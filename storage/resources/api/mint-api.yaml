@@ -65,6 +65,47 @@ paths:
         default:
           $ref: '#/responses/Error'
 
+    put:
+      summary: create credential
+      description: |
+        Creates a new credential entry.
+      tags:
+        - Credentials
+      operationId: 'org.zalando.stups.mint.storage.api/create-credential!'
+      security:
+      - oauth2:
+        - userinfo
+      parameters:
+      - $ref: '#/parameters/ApplicationID'
+      - name: credential
+        in: body
+        required: true
+        schema:
+          $ref: '#/definitions/CredentialCreate'
+      responses:
+        200:
+          description: Creation succeeded
+        default:
+          $ref: '#/responses/Error'
+
+    delete:
+      summary: delete credential
+      description: |
+        Deletes a credential entry.
+      tags:
+        - Credentials
+      operationId: 'org.zalando.stups.mint.storage.api/delete-credential!'
+      security:
+      - oauth2:
+        - userinfo
+      parameters:
+      - $ref: '#/parameters/ApplicationID'
+      responses:
+        200:
+          description: Deletion succeeded
+        default:
+          $ref: '#/responses/Error'
+
   '/creds/{application_id}/sensitive':
     get:
       summary: read sensitive credential
@@ -85,6 +126,54 @@ paths:
             $ref: '#/definitions/CredentialSensitiveDetailsRead'
         404:
           description: Not found
+        default:
+          $ref: '#/responses/Error'
+
+  '/creds/{application_id}/application_password':
+    put:
+      summary: update application password
+      description: |
+        Updates an application password.
+      tags:
+        - Credentials
+      operationId: 'org.zalando.stups.mint.storage.api/update-application-password!'
+      security:
+      - oauth2:
+        - userinfo
+      parameters:
+      - $ref: '#/parameters/ApplicationID'
+      - name: credential
+        in: body
+        required: true
+        schema:
+          $ref: '#/definitions/CredentialApplicationPasswordUpdate'
+      responses:
+        200:
+          description: Update succeeded
+        default:
+          $ref: '#/responses/Error'
+
+  '/creds/{application_id}/client_secret':
+    put:
+      summary: update client secret
+      description: |
+        Updates a client secret.
+      tags:
+        - Credentials
+      operationId: 'org.zalando.stups.mint.storage.api/update-client-secret!'
+      security:
+      - oauth2:
+        - userinfo
+      parameters:
+      - $ref: '#/parameters/ApplicationID'
+      - name: credential
+        in: body
+        required: true
+        schema:
+          $ref: '#/definitions/CredentialClientSecretUpdate'
+      responses:
+        200:
+          description: Update succeeded
         default:
           $ref: '#/responses/Error'
 
@@ -110,9 +199,6 @@ definitions:
       application_id:
         type: string
         description: Unique identifier of the application
-      status:
-        type: string
-        description: The current status of the rotation
       last_password_rotation:
         type: datetime
         description: Time of the last application password rotation
@@ -135,9 +221,6 @@ definitions:
       application_id:
         type: string
         description: Unique identifier of the application
-      status:
-        type: string
-        description: The current status of the rotation
       last_password_rotation:
         type: datetime
         description: Time of the last application password rotation
@@ -159,7 +242,6 @@ definitions:
       - client_id
     example:
       application_id: kio
-      status: SUCCESS
       last_password_rotation: 1234567890
       last_secret_rotation: 1234567890
       application_username: kio
@@ -170,9 +252,6 @@ definitions:
       application_id:
         type: string
         description: Unique identifier of the application
-      status:
-        type: string
-        description: The current status of the rotation
       last_password_rotation:
         type: datetime
         description: Time of the last application password rotation
@@ -193,7 +272,6 @@ definitions:
         description: The actual client's OAuth 2.0 secret
     required:
       - application_id
-      - status
       - last_password_rotation
       - last_secret_rotation
       - application_username
@@ -202,13 +280,62 @@ definitions:
       - client_secret
     example:
       application_id: kio
-      status: SUCCESS
       last_password_rotation: 1234567890
       last_secret_rotation: 1234567890
       application_username: kio
       application_password: password123
       client_id: kio123
       client_secret: secret456
+
+  CredentialCreate:
+    properties:
+      application_username:
+        type: string
+        description: The application's service username
+      client_id:
+        type: string
+        description: The application's OAuth 2.0 client ID
+    required:
+      - application_username
+      - client_id
+    example:
+      application_username: kio
+      client_id: kio123
+
+  CredentialApplicationPasswordUpdate:
+    properties:
+      last_password_rotation:
+        type: datetime
+        description: Time of the last application password rotation
+      application_password:
+        type: string
+        description: The application's service password
+    required:
+      - last_password_rotation
+      - application_password
+    example:
+      last_password_rotation: 1234567890
+      application_password: abcdef123
+
+  CredentialClientSecretUpdate:
+    properties:
+      last_secret_rotation:
+        type: datetime
+        description: Time of the last client secret rotation
+      client_id:
+        type: string
+        description: The application's OAuth 2.0 client ID
+      client_secret:
+        type: string
+        description: The actual client's OAuth 2.0 secret
+    required:
+      - last_secret_rotation
+      - client_id
+      - client_secret
+    example:
+      last_secret_rotation: 1234567890
+      client_id: kio123
+      client_secret: abcdef123
 
   Error:
     type: object
