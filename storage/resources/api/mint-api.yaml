@@ -1,0 +1,227 @@
+swagger: '2.0'
+
+# basic meta information
+info:
+  title: mint API
+  version: '0.1'
+  description: mint is STUPS' secret rotator and distributor.
+
+externalDocs:
+  description: STUPS overview
+  url: http://zalando-stups.github.io/
+
+# technical configuration
+basePath: /
+produces:
+- application/json
+consumes:
+- application/json
+
+paths:
+
+  # applications
+
+  '/creds':
+    get:
+      summary: list credentials
+      description: |
+        Lists all credentials.
+      tags:
+        - Credentials
+      operationId: 'org.zalando.stups.mint.storage.api/read-credentials'
+      security:
+      - oauth2:
+        - userinfo
+      responses:
+        200:
+          description: List of all credentials
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/CredentialSummaryRead'
+        default:
+          $ref: '#/responses/Error'
+
+  '/creds/{application_id}':
+    get:
+      summary: read credential
+      description: |
+        Returns credentials for an application
+      tags:
+      - Credentials
+      operationId: 'org.zalando.stups.mint.storage.api/read-credential'
+      security:
+      - oauth2:
+        - userinfo
+      parameters:
+      - $ref: '#/parameters/ApplicationID'
+      responses:
+        200:
+          description: Credentials of the application
+          schema:
+            $ref: '#/definitions/CredentialDetailsRead'
+        404:
+          description: Not found
+        default:
+          $ref: '#/responses/Error'
+
+  '/creds/{application_id}/sensitive':
+    get:
+      summary: read sensitive credential
+      description: |
+        Returns sensitive credentials for an application
+      tags:
+      - Credentials
+      operationId: 'org.zalando.stups.mint.storage.api/read-credential-sensitive'
+      security:
+      - oauth2:
+        - userinfo
+      parameters:
+      - $ref: '#/parameters/ApplicationID'
+      responses:
+        200:
+          description: Credentials of the application
+          schema:
+            $ref: '#/definitions/CredentialSensitiveDetailsRead'
+        404:
+          description: Not found
+        default:
+          $ref: '#/responses/Error'
+
+# definitions
+
+parameters:
+  ApplicationID:
+    name: application_id
+    in: path
+    type: string
+    description: ID of the application
+    required: true
+
+responses:
+  Error:
+    description: An error occured.
+    schema:
+      $ref: '#/definitions/Error'
+
+definitions:
+  CredentialSummaryRead:
+    properties:
+      application_id:
+        type: string
+        description: Unique identifier of the application
+      status:
+        type: string
+        description: The current status of the rotation
+      last_password_rotation:
+        type: datetime
+        description: Time of the last application password rotation
+      last_secret_rotation:
+        type: datetime
+        description: Time of the last client secret rotation
+    required:
+      - application_id
+      - status
+      - last_password_rotation
+      - last_secret_rotation
+    example:
+      application_id: kio
+      status: SUCCESS
+      last_password_rotation: 1234567890
+      last_secret_rotation: 1234567890
+
+  CredentialDetailsRead:
+    properties:
+      application_id:
+        type: string
+        description: Unique identifier of the application
+      status:
+        type: string
+        description: The current status of the rotation
+      last_password_rotation:
+        type: datetime
+        description: Time of the last application password rotation
+      last_secret_rotation:
+        type: datetime
+        description: Time of the last client secret rotation
+      application_username:
+        type: string
+        description: The application's service username
+      client_id:
+        type: string
+        description: The application's OAuth 2.0 client ID
+    required:
+      - application_id
+      - status
+      - last_password_rotation
+      - last_secret_rotation
+      - application_username
+      - client_id
+    example:
+      application_id: kio
+      status: SUCCESS
+      last_password_rotation: 1234567890
+      last_secret_rotation: 1234567890
+      application_username: kio
+      client_id: kio123
+
+  CredentialSensitiveDetailsRead:
+    properties:
+      application_id:
+        type: string
+        description: Unique identifier of the application
+      status:
+        type: string
+        description: The current status of the rotation
+      last_password_rotation:
+        type: datetime
+        description: Time of the last application password rotation
+      last_secret_rotation:
+        type: datetime
+        description: Time of the last client secret rotation
+      application_username:
+        type: string
+        description: The application's service username
+      application_password:
+        type: string
+        description: The actual application's service password
+      client_id:
+        type: string
+        description: The application's OAuth 2.0 client ID
+      client_secret:
+        type: string
+        description: The actual client's OAuth 2.0 secret
+    required:
+      - application_id
+      - status
+      - last_password_rotation
+      - last_secret_rotation
+      - application_username
+      - application_password
+      - client_id
+      - client_secret
+    example:
+      application_id: kio
+      status: SUCCESS
+      last_password_rotation: 1234567890
+      last_secret_rotation: 1234567890
+      application_username: kio
+      application_password: password123
+      client_id: kio123
+      client_secret: secret456
+
+  Error:
+    type: object
+    properties:
+      message:
+        type: string
+    example:
+      message: Internal Server Error
+
+securityDefinitions:
+  oauth2:
+    type: oauth2
+    description: OAuth 2.0 access control.
+    scopes:
+      userinfo: Grants everyone read access to all APIs.
+      api/write: Grants write access to save APIs.
