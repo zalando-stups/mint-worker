@@ -29,9 +29,6 @@ paths:
       tags:
         - Credentials
       operationId: 'org.zalando.stups.mint.storage.api/read-credentials'
-      security:
-      - oauth2:
-        - userinfo
       responses:
         200:
           description: List of all credentials
@@ -50,9 +47,6 @@ paths:
       tags:
       - Credentials
       operationId: 'org.zalando.stups.mint.storage.api/read-credential'
-      security:
-      - oauth2:
-        - userinfo
       parameters:
       - $ref: '#/parameters/ApplicationID'
       responses:
@@ -72,9 +66,6 @@ paths:
       tags:
         - Credentials
       operationId: 'org.zalando.stups.mint.storage.api/create-credential!'
-      security:
-      - oauth2:
-        - userinfo
       parameters:
       - $ref: '#/parameters/ApplicationID'
       - name: credential
@@ -95,9 +86,6 @@ paths:
       tags:
         - Credentials
       operationId: 'org.zalando.stups.mint.storage.api/delete-credential!'
-      security:
-      - oauth2:
-        - userinfo
       parameters:
       - $ref: '#/parameters/ApplicationID'
       responses:
@@ -114,9 +102,6 @@ paths:
       tags:
       - Credentials
       operationId: 'org.zalando.stups.mint.storage.api/read-credential-sensitive'
-      security:
-      - oauth2:
-        - userinfo
       parameters:
       - $ref: '#/parameters/ApplicationID'
       responses:
@@ -137,9 +122,6 @@ paths:
       tags:
         - Credentials
       operationId: 'org.zalando.stups.mint.storage.api/update-application-password!'
-      security:
-      - oauth2:
-        - userinfo
       parameters:
       - $ref: '#/parameters/ApplicationID'
       - name: credential
@@ -161,9 +143,6 @@ paths:
       tags:
         - Credentials
       operationId: 'org.zalando.stups.mint.storage.api/update-client-secret!'
-      security:
-      - oauth2:
-        - userinfo
       parameters:
       - $ref: '#/parameters/ApplicationID'
       - name: credential
@@ -344,11 +323,3 @@ definitions:
         type: string
     example:
       message: Internal Server Error
-
-securityDefinitions:
-  oauth2:
-    type: oauth2
-    description: OAuth 2.0 access control.
-    scopes:
-      userinfo: Grants everyone read access to all APIs.
-      api/write: Grants write access to save APIs.

@@ -30,15 +30,6 @@
 
 ;; credentials
 
-(defn- serialize-sql-timestamp
-  "Serializes a sql timestamp to json."
-  [^Timestamp timestamp #^PrintWriter out]
-  (.print out (int (/ (.getTime timestamp) 1000))))
-
-; add json capability to java.sql.Timestamp
-(extend Timestamp JSONWriter
-  {:-write serialize-sql-timestamp})
-
 (defn keywordize
   "Maps a String->Any map to Keyword->Any."
   [m]
