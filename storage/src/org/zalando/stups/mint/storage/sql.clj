@@ -25,4 +25,4 @@
    :db-user        "postgres"
    :db-password    "postgres"})
 
-(defqueries "db/credentials.sql")
+(defqueries "db/applications.sql")

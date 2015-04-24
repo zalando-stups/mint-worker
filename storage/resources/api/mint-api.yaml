@@ -1,16 +1,14 @@
 swagger: '2.0'
 
-# basic meta information
 info:
   title: mint API
   version: '0.1'
   description: mint is STUPS' secret rotator and distributor.
 
 externalDocs:
-  description: STUPS overview
-  url: http://zalando-stups.github.io/
+  description: STUPS documentation
+  url: http://stups.readthedocs.org/
 
-# technical configuration
 basePath: /
 produces:
 - application/json
@@ -19,144 +17,169 @@ consumes:
 
 paths:
 
-  # applications
-
-  '/creds':
+  '/apps':
     get:
-      summary: list credentials
+      summary: list managed applications
       description: |
-        Lists all credentials.
+        Provides a list of all applications, that are managed by mint.
       tags:
-        - Credentials
-      operationId: 'org.zalando.stups.mint.storage.api/read-credentials'
+        - Application
+      operationId: undefined
       responses:
         200:
-          description: List of all credentials
+          description: list of managed applications
           schema:
+            description: all applications
             type: array
             items:
-              $ref: '#/definitions/CredentialSummaryRead'
+              type: object
+              properties:
+                id:
+                  type: string
+                last_password_rotation:
+                  type: string
+                  format: date-time
+                last_client_rotation:
+                  type: string
+                  format: date-time
+                has_problems:
+                  type: boolean
+              required:
+                - id
+                - has_problems
+          examples:
+            application/json:
+              - id: pierone
+                last_password_rotation: "2015-06-14T15:30:00Z+01:00"
+                last_client_rotation:
+                has_problems: false
         default:
           $ref: '#/responses/Error'
 
-  '/creds/{application_id}':
+  '/apps/{application_id}':
     get:
-      summary: read credential
+      summary: read application
       description: |
-        Returns credentials for an application
+        Returns state and configuration information about an application.
       tags:
-      - Credentials
-      operationId: 'org.zalando.stups.mint.storage.api/read-credential'
+        - Application
+      operationId: undefined
       parameters:
-      - $ref: '#/parameters/ApplicationID'
+        - $ref: '#/parameters/ApplicationID'
       responses:
         200:
-          description: Credentials of the application
+          description: application information
           schema:
-            $ref: '#/definitions/CredentialDetailsRead'
-        404:
-          description: Not found
+            type: object
+            properties:
+              id:
+                type: string
+              last_password_rotation:
+                type: string
+                format: date-time
+              last_client_rotation:
+                type: string
+                format: date-time
+              has_problems:
+                type: boolean
+              accounts:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    type:
+                      type: string
+              redirect_urls:
+                type: array
+                items:
+                  type: string
+            required:
+              - id
+              - has_problems
+              - accounts
         default:
           $ref: '#/responses/Error'
 
     put:
-      summary: create credential
+      summary: create or update configuration
       description: |
-        Creates a new credential entry.
+        Creates or updates the application's configuration. If no accounts are listed, the configuration will be
+        deleted.
       tags:
-        - Credentials
-      operationId: 'org.zalando.stups.mint.storage.api/create-credential!'
+        - Application
+      operationId: undefined
       parameters:
-      - $ref: '#/parameters/ApplicationID'
-      - name: credential
-        in: body
-        required: true
-        schema:
-          $ref: '#/definitions/CredentialCreate'
+        - $ref: '#/parameters/ApplicationID'
+        - name: application
+          in: body
+          schema:
+            type: object
+            properties:
+              accounts:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    type:
+                      type: string
+              redirect_urls:
+                type: array
+                items:
+                  type: string
       responses:
         200:
-          description: Creation succeeded
+          description: configuration stored
+        default:
+          $ref: '#/responses/Error'
+
+    patch:
+      summary: update configuration status
+      description: |
+        Updates the application's configuration status.
+      tags:
+        - Status
+      operationId: undefined
+      parameters:
+        - $ref: '#/parameters/ApplicationID'
+        - name: status
+          in: body
+          schema:
+            type: object
+            properties:
+              client_id:
+                type: string
+              last_password_rotation:
+                type: string
+                format: date-time
+              last_client_rotation:
+                type: string
+                format: date-time
+              has_problems:
+                type: boolean
+      responses:
+        200:
+          description: configuration status updated
         default:
           $ref: '#/responses/Error'
 
     delete:
-      summary: delete credential
+      summary: delete application configuration
       description: |
-        Deletes a credential entry.
+        Deletes an application configuration. Has the same effect than passing an empty account list to the PUT request.
       tags:
-        - Credentials
-      operationId: 'org.zalando.stups.mint.storage.api/delete-credential!'
+        - Application
+      operationId: undefined
       parameters:
-      - $ref: '#/parameters/ApplicationID'
+        - $ref: '#/parameters/ApplicationID'
       responses:
         200:
-          description: Deletion succeeded
+          description: configuration deleted
         default:
           $ref: '#/responses/Error'
-
-  '/creds/{application_id}/sensitive':
-    get:
-      summary: read sensitive credential
-      description: |
-        Returns sensitive credentials for an application
-      tags:
-      - Credentials
-      operationId: 'org.zalando.stups.mint.storage.api/read-credential-sensitive'
-      parameters:
-      - $ref: '#/parameters/ApplicationID'
-      responses:
-        200:
-          description: Credentials of the application
-          schema:
-            $ref: '#/definitions/CredentialSensitiveDetailsRead'
-        404:
-          description: Not found
-        default:
-          $ref: '#/responses/Error'
-
-  '/creds/{application_id}/application_password':
-    put:
-      summary: update application password
-      description: |
-        Updates an application password.
-      tags:
-        - Credentials
-      operationId: 'org.zalando.stups.mint.storage.api/update-application-password!'
-      parameters:
-      - $ref: '#/parameters/ApplicationID'
-      - name: credential
-        in: body
-        required: true
-        schema:
-          $ref: '#/definitions/CredentialApplicationPasswordUpdate'
-      responses:
-        200:
-          description: Update succeeded
-        default:
-          $ref: '#/responses/Error'
-
-  '/creds/{application_id}/client_secret':
-    put:
-      summary: update client secret
-      description: |
-        Updates a client secret.
-      tags:
-        - Credentials
-      operationId: 'org.zalando.stups.mint.storage.api/update-client-secret!'
-      parameters:
-      - $ref: '#/parameters/ApplicationID'
-      - name: credential
-        in: body
-        required: true
-        schema:
-          $ref: '#/definitions/CredentialClientSecretUpdate'
-      responses:
-        200:
-          description: Update succeeded
-        default:
-          $ref: '#/responses/Error'
-
-# definitions
 
 parameters:
   ApplicationID:
@@ -173,149 +196,6 @@ responses:
       $ref: '#/definitions/Error'
 
 definitions:
-  CredentialSummaryRead:
-    properties:
-      application_id:
-        type: string
-        description: Unique identifier of the application
-      last_password_rotation:
-        type: datetime
-        description: Time of the last application password rotation
-      last_secret_rotation:
-        type: datetime
-        description: Time of the last client secret rotation
-    required:
-      - application_id
-      - status
-      - last_password_rotation
-      - last_secret_rotation
-    example:
-      application_id: kio
-      status: SUCCESS
-      last_password_rotation: 1234567890
-      last_secret_rotation: 1234567890
-
-  CredentialDetailsRead:
-    properties:
-      application_id:
-        type: string
-        description: Unique identifier of the application
-      last_password_rotation:
-        type: datetime
-        description: Time of the last application password rotation
-      last_secret_rotation:
-        type: datetime
-        description: Time of the last client secret rotation
-      application_username:
-        type: string
-        description: The application's service username
-      client_id:
-        type: string
-        description: The application's OAuth 2.0 client ID
-    required:
-      - application_id
-      - status
-      - last_password_rotation
-      - last_secret_rotation
-      - application_username
-      - client_id
-    example:
-      application_id: kio
-      last_password_rotation: 1234567890
-      last_secret_rotation: 1234567890
-      application_username: kio
-      client_id: kio123
-
-  CredentialSensitiveDetailsRead:
-    properties:
-      application_id:
-        type: string
-        description: Unique identifier of the application
-      last_password_rotation:
-        type: datetime
-        description: Time of the last application password rotation
-      last_secret_rotation:
-        type: datetime
-        description: Time of the last client secret rotation
-      application_username:
-        type: string
-        description: The application's service username
-      application_password:
-        type: string
-        description: The actual application's service password
-      client_id:
-        type: string
-        description: The application's OAuth 2.0 client ID
-      client_secret:
-        type: string
-        description: The actual client's OAuth 2.0 secret
-    required:
-      - application_id
-      - last_password_rotation
-      - last_secret_rotation
-      - application_username
-      - application_password
-      - client_id
-      - client_secret
-    example:
-      application_id: kio
-      last_password_rotation: 1234567890
-      last_secret_rotation: 1234567890
-      application_username: kio
-      application_password: password123
-      client_id: kio123
-      client_secret: secret456
-
-  CredentialCreate:
-    properties:
-      application_username:
-        type: string
-        description: The application's service username
-      client_id:
-        type: string
-        description: The application's OAuth 2.0 client ID
-    required:
-      - application_username
-      - client_id
-    example:
-      application_username: kio
-      client_id: kio123
-
-  CredentialApplicationPasswordUpdate:
-    properties:
-      last_password_rotation:
-        type: datetime
-        description: Time of the last application password rotation
-      application_password:
-        type: string
-        description: The application's service password
-    required:
-      - last_password_rotation
-      - application_password
-    example:
-      last_password_rotation: 1234567890
-      application_password: abcdef123
-
-  CredentialClientSecretUpdate:
-    properties:
-      last_secret_rotation:
-        type: datetime
-        description: Time of the last client secret rotation
-      client_id:
-        type: string
-        description: The application's OAuth 2.0 client ID
-      client_secret:
-        type: string
-        description: The actual client's OAuth 2.0 secret
-    required:
-      - last_secret_rotation
-      - client_id
-      - client_secret
-    example:
-      last_secret_rotation: 1234567890
-      client_id: kio123
-      client_secret: abcdef123
-
   Error:
     type: object
     properties:

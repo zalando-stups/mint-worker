@@ -8,7 +8,7 @@
   :min-lein-version "2.0.0"
 
   :dependencies [[org.clojure/clojure "1.6.0"]
-                 [org.zalando.stups/friboo "0.5.0"]
+                 [org.zalando.stups/friboo "0.6.0"]
                  [clj-http-lite "0.2.1"]]
 
   :main ^:skip-aot org.zalando.stups.mint.worker.core
