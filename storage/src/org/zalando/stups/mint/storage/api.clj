@@ -18,12 +18,11 @@
             [clojure.data.json :refer [JSONWriter]]
             [ring.util.response :refer :all]
             [org.zalando.stups.friboo.ring :refer :all]
-            [org.zalando.stups.friboo.log :as log])
-  (:import (java.io PrintWriter)
-           (java.sql Timestamp)))
+            [org.zalando.stups.friboo.log :as log]
+            [clojure.java.jdbc :as jdbc]))
 
 ; define the API component and its dependencies
-(def-http-component API "api/mint-api.yaml" [db])
+(def-http-component API "api/mint-api.yaml" [db config])
 
 (def default-http-configuration
   {:http-port 8080})
@@ -33,61 +32,91 @@
 (defn keywordize
   "Maps a String->Any map to Keyword->Any."
   [m]
-  (into {} (map (fn [[k v]] [(keyword k) v]) m)))
-(comment
-  (defn read-credentials
-    "Returns all credentials."
-    [_ _ db]
-    (log/debug "Listing all credentials...")
-    (-> (sql/read-credentials {} {:connection db})
-        (response)
-        (content-type-json)))
+  (into {} (map
+             (fn [[k v]] [(keyword k) v])
+             m)))
 
-  (defn read-credential
-    "Returns credentials for an application."
-    [parameters _ db]
-    (log/debug "Reading credentials for %s..." parameters)
-    (-> (sql/read-credential parameters {:connection db})
-        (single-response)
-        (content-type-json)))
+(defn strip-prefix
+  "Removes the database field prefix."
+  [m]
+  (let [prefix-pattern #"[a-z]+_(.+)"
+        remove-prefix (fn [k]
+                        (->> k name (re-find prefix-pattern) second keyword))]
+    (into {} (map
+               (fn [[k v]] [(remove-prefix k) v])
+               m))))
 
-  (defn read-credential-sensitive
-    "Returns sensitive credentials for an application."
-    [parameters _ db]
-    (log/debug "Reading sensitive credentials for %s..." parameters)
-    (-> (sql/read-credential-sensitive parameters {:connection db})
-        (single-response)
-        (content-type-json)))
+(defn read-applications
+  "Returns all application configurations."
+  [_ _ db _]
+  (log/debug "Listing all application configurations...")
+  (->> (sql/read-applications {} {:connection db})
+       (map #(strip-prefix %))
+       (response)
+       (content-type-json)))
 
-  (defn create-credential!
-    "Creates a new credential entry."
-    [{:keys [application_id credential]} _ db]
-    (log/debug "Creating new credential entry for %s..." application_id)
-    (sql/create-credential! (assoc (keywordize credential) :application_id application_id) {:connection db})
-    (log/info "Created new credential entry %s." application_id)
-    (response nil))
+(defn read-application
+  "Returns detailed information about one application configuration."
+  [{:keys [application_id]} _ db _]
+  (log/debug "Reading information about application %s..." application_id)
+  (if-let [app (first (sql/read-application {:application_id application_id} {:connection db}))]
+    (let [app (-> app
+                  (strip-prefix)
+                  (select-keys [:id :last_password_rotation :last_client_rotation :has_problems :redirect_url])
+                  (assoc :accounts (->> (sql/read-accounts {:application_id application_id} {:connection db})
+                                        (map #(strip-prefix %)))))]
+      (log/debug "Found application %s with %s." application_id app)
+      (-> (response app)
+          (content-type-json)))
+    (not-found nil)))
 
-  (defn delete-credential!
-    "Deletes a credential entry."
-    [parameters _ db]
-    (log/debug "Deleting credential entry of %s..." parameters)
-    (sql/delete-credential! parameters {:connection db})
-    (log/info "Deleted credential entry %s." parameters)
-    (response nil))
-
-  (defn update-application-password!
-    "Updates an application password."
-    [{:keys [application_id credential]} _ db]
-    (log/debug "Updating credential application password for %s..." application_id)
-    (sql/update-application-password! (assoc (keywordize credential) :application_id application_id) {:connection db})
-    (log/info "Updated credential application password for %s." application_id)
-    (response nil))
-
-  (defn update-client-secret!
-    "Updates a client secret."
-    [{:keys [application_id credential]} _ db]
-    (log/debug "Updating credential client secret for %s..." application_id)
-    (sql/update-client-secret! (assoc (keywordize credential) :application_id application_id) {:connection db})
-    (log/info "Updated credential client secret for %s." application_id)
-    (response nil))
-  )
+(defn create-or-update-application
+  "Creates or updates an appliction. If no accounts are given, deletes the application."
+  [{:keys [application_id application]} _ db config]
+  (log/debug "Creating or updating application %s with %s..." application_id application)
+  (if (empty? (:accounts application))
+    (do
+      (sql/delete-application! {:application_id application_id} {:connection db})
+      (log/info "Deleted application %s because no accounts were given." application_id))
+    (do
+      (jdbc/with-db-transaction
+        [connection db]
+        ; check app base information
+        (if-let [app (first (sql/read-application {:application_id application_id} {:connection connection}))]
+          ; check for update
+          (if-not (= (:redirect_url app) (:redirect_url application))
+            (sql/update-application! {:application_id application_id
+                                      :redirect_url   (:redirect_url application)}
+                                     {:connection connection}))
+          ; create new app
+          (let [prefix (:username-prefix config)
+                username (if prefix (str prefix application_id) application_id)]
+            (sql/create-application! {:application_id application_id
+                                      :redirect_url   (:redirect_url application)
+                                      :username       username}
+                                     {:connection connection})))
+        ; sync accounts
+        (let [accounts-now (sql/read-accounts {:application_id application_id} {:connection connection})
+              accounts-future (:accounts application)
+              account-matches? (fn [db-acc api-acc]
+                                 (and (= (:ac_id db-acc) (:id api-acc))
+                                      (= (:ac_type db-acc) (:type api-acc))))
+              accounts-to-be-deleted (remove
+                                       (fn [db-acc]
+                                         (some #(account-matches? db-acc %) accounts-future))
+                                       accounts-now)
+              accounts-to-be-created (remove
+                                       (fn [api-acc]
+                                         (some #(account-matches? % api-acc) accounts-now))
+                                       accounts-future)]
+          (doseq [db-acc accounts-to-be-deleted]
+            (sql/delete-account! {:application_id application_id
+                                  :account_id     (:ac_id db-acc)
+                                  :account_type   (:ac_type db-acc)}
+                                 {:connection connection}))
+          (doseq [api-acc accounts-to-be-created]
+            (sql/create-account! {:application_id application_id
+                                  :account_id     (:id api-acc)
+                                  :account_type   (:type api-acc)}
+                                 {:connection connection}))))
+      (log/info "Updated application %s with %s." application_id application))))

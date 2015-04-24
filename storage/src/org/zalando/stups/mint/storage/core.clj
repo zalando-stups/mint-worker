@@ -25,7 +25,7 @@
   "Initializes and starts the whole system."
   [default-configuration]
   (let [configuration (config/load-configuration
-                        [:db :http]
+                        [:db :http :mint]
                         [sql/default-db-configuration
                          api/default-http-configuration
                          default-configuration])
@@ -33,7 +33,8 @@
         system (system-map
                  :db (sql/map->DB {:configuration (:db configuration)})
                  :api (using
-                        (api/map->API {:configuration (:http configuration)})
+                        (api/map->API {:configuration (:http configuration)
+                                       :config (:mint configuration)})
                         [:db]))]
 
     (system/run configuration system)))

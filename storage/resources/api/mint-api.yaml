@@ -24,7 +24,7 @@ paths:
         Provides a list of all applications, that are managed by mint.
       tags:
         - Application
-      operationId: undefined
+      operationId: org.zalando.stups.mint.storage.api/read-applications
       responses:
         200:
           description: list of managed applications
@@ -63,7 +63,7 @@ paths:
         Returns state and configuration information about an application.
       tags:
         - Application
-      operationId: undefined
+      operationId: org.zalando.stups.mint.storage.api/read-application
       parameters:
         - $ref: '#/parameters/ApplicationID'
       responses:
@@ -82,6 +82,8 @@ paths:
                 format: date-time
               has_problems:
                 type: boolean
+              redirect_url:
+                type: string
               accounts:
                 type: array
                 items:
@@ -91,10 +93,6 @@ paths:
                       type: string
                     type:
                       type: string
-              redirect_urls:
-                type: array
-                items:
-                  type: string
             required:
               - id
               - has_problems
@@ -109,7 +107,7 @@ paths:
         deleted.
       tags:
         - Application
-      operationId: undefined
+      operationId: org.zalando.stups.mint.storage.api/create-or-update-application
       parameters:
         - $ref: '#/parameters/ApplicationID'
         - name: application
@@ -117,6 +115,8 @@ paths:
           schema:
             type: object
             properties:
+              redirect_url:
+                type: string
               accounts:
                 type: array
                 items:
@@ -126,10 +126,6 @@ paths:
                       type: string
                     type:
                       type: string
-              redirect_urls:
-                type: array
-                items:
-                  type: string
       responses:
         200:
           description: configuration stored

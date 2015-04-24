@@ -23,8 +23,12 @@ SELECT ap_id,
 
 -- name: update-application!
 UPDATE application
-   SET ap_redirect_url = COALESCE(:redirect_url, ap_redirect_url),
-       ap_client_id = COALESCE(:client_id, ap_client_id),
+   SET ap_redirect_url = COALESCE(:redirect_url, ap_redirect_url)
+ WHERE ap_id = :application_id;
+
+-- name: update-application-status!
+UPDATE application
+   SET ap_client_id = COALESCE(:client_id, ap_client_id),
        ap_last_password_rotation = COALESCE(:last_password_rotation, ap_last_password_rotation),
        ap_last_client_rotation = COALESCE(:last_client_rotation, ap_last_client_rotation),
        ap_has_problems = COALESCE(:has_problems, ap_has_problems)
@@ -40,7 +44,7 @@ INSERT INTO account
      VALUES (:application_id, :account_id, :account_type);
 
 -- name: read-accounts
-SELECT ac_application_id, ac_id, ac_type
+SELECT ac_id, ac_type
   FROM account
  WHERE ac_application_id = :application_id;
 
