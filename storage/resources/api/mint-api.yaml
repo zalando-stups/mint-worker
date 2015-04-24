@@ -138,7 +138,7 @@ paths:
         Updates the application's configuration status.
       tags:
         - Status
-      operationId: undefined
+      operationId: org.zalando.stups.mint.storage.api/update-application-status
       parameters:
         - $ref: '#/parameters/ApplicationID'
         - name: status
@@ -168,7 +168,7 @@ paths:
         Deletes an application configuration. Has the same effect than passing an empty account list to the PUT request.
       tags:
         - Application
-      operationId: undefined
+      operationId: org.zalando.stups.mint.storage.api/delete-application
       parameters:
         - $ref: '#/parameters/ApplicationID'
       responses:

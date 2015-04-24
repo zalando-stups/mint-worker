@@ -15,8 +15,8 @@ SELECT ap_id,
        ap_redirect_url,
        ap_username,
        ap_client_id,
-       ap_last_password_rotation,
-       ap_last_client_rotation,
+       ap_last_password_rotation::text,
+       ap_last_client_rotation::text,
        ap_has_problems
   FROM application
  WHERE ap_id = :application_id;
@@ -29,14 +29,13 @@ UPDATE application
 -- name: update-application-status!
 UPDATE application
    SET ap_client_id = COALESCE(:client_id, ap_client_id),
-       ap_last_password_rotation = COALESCE(:last_password_rotation, ap_last_password_rotation),
-       ap_last_client_rotation = COALESCE(:last_client_rotation, ap_last_client_rotation),
+       ap_last_password_rotation = COALESCE(:last_password_rotation ::timestamp, ap_last_password_rotation),
+       ap_last_client_rotation = COALESCE(:last_client_rotation::timestamp, ap_last_client_rotation),
        ap_has_problems = COALESCE(:has_problems, ap_has_problems)
  WHERE ap_id = :application_id;
 
 -- name: delete-application!
 DELETE FROM application WHERE ap_id = :application_id;
-
 
 -- name: create-account!
 INSERT INTO account

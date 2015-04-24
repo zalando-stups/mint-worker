@@ -119,4 +119,26 @@
                                   :account_id     (:id api-acc)
                                   :account_type   (:type api-acc)}
                                  {:connection connection}))))
-      (log/info "Updated application %s with %s." application_id application))))
+      (log/info "Updated application %s with %s." application_id application)))
+  (response nil))
+
+(defn update-application-status
+  "Updates an existing application."
+  [{:keys [application_id status]} _ db _]
+  (log/debug "Update application status %s ..." application_id)
+  (sql/update-application-status! {:application_id         application_id
+                                   :client_id              (:client_id status)
+                                   :last_password_rotation (:last_password_rotation status)
+                                   :last_client_rotation   (:last_client_rotation status)
+                                   :has_problems           (:has_problems status)}
+                                  {:connection db})
+  (log/info "Updated application status %s with %s." application_id status)
+  (response nil))
+
+(defn delete-application
+  "Deletes an application configuration."
+  [{:keys [application_id]} _ db _]
+  (log/debug "Delete application %s ..." application_id)
+  (sql/delete-application! {:application_id application_id} {:connection db})
+  (log/info "Deleted application %s." application_id)
+  (response nil))
