@@ -7,9 +7,11 @@
 
 ; some utilities
 
-(def test-storage-url "https://localhost")
 (def test-config
-  {:storage-url test-storage-url})
+  {:storage-url      "https://localhost"
+   :kio-url          "https://localhost"
+   :service-user-url "https://localhost"
+   :prefix           "stups_"})
 
 (defmacro always
   "Returns a function that accepts arbitrary parameters and always executes the same body. Similar to 'constantly' but
@@ -46,7 +48,7 @@
 (deftest resiliency-individual-app
   ; error on processing on app-> no bubble up, so job restarts in a imnute
   (with-redefs [storage/list-apps (always [{:id "foo"}])
-                apps/get-app (always (throw (ex-info "this should be catched" {})))]
+                storage/get-app (always (throw (ex-info "this should be catched" {})))]
     (j/run-sync test-config)))
 
 
@@ -55,23 +57,51 @@
 (deftest sync-add-all-accs
   ; make sure, sync-app will be called for every account
   (let [calls (atom #{})]
+
     (with-redefs [storage/list-apps (always [{:id "foo"}, {:id "bar"}])
                   j/sync-app (track calls :sync-app)]
+
       (j/run-sync test-config)
       (is (= #{[:sync-app "foo"] [:sync-app "bar"]} @calls)))))
 
 (deftest sync-delete-inactive-apps
   ; check for inactive apps
   (let [calls (atom #{})]
-    (with-redefs [services/list-users (always #{"foo"})
+
+    (with-redefs [services/list-users (always #{"stups_foo"})
+                  storage/get-app (lookup {"foo" {:id       "foo"
+                                                  :username "stups_foo"}})
                   apps/get-app (lookup {"foo" {:id     "foo"
                                                :active false}})
                   services/delete-user (track calls :delete-service)]
+
       (j/sync-app test-config "foo")
-      (is (= #{[:delete-service "foo"]} @calls)))))
+      (is (= #{[:delete-service "stups_foo"]} @calls)))))
 
-; TODO test deletion of users
+(deftest sync-delete-inactive-apps-ignore
+  ; check for inactive apps
+  (let [calls (atom #{})]
 
+    (with-redefs [services/list-users (always #{})
+                  storage/get-app (lookup {"foo" {:id       "foo"
+                                                  :username "stups_foo"}})
+                  apps/get-app (lookup {"foo" {:id     "foo"
+                                               :active false}})
+                  services/delete-user (track calls :delete-service)]
+
+      (j/sync-app test-config "foo")
+      (is (= #{} @calls)))))
+
+(deftest sync-create-or-update-user
+  ; check for inactive apps
+  (let [calls (atom #{})]
+    (with-redefs [services/list-users (always #{"stups_foo"})
+                  storage/get-app (lookup {"foo" {:id       "foo"
+                                                  :username "stups_foo"}})
+                  apps/get-app (lookup {"foo" {:id     "foo"
+                                               :active false}})
+                  services/delete-user (track calls :delete-service)]
+      (j/sync-app test-config "foo"))))
 
 ;; password and client secret rotation
 

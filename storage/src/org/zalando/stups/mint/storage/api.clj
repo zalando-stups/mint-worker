@@ -53,7 +53,7 @@
   (if-let [app (first (sql/read-application {:application_id application_id} {:connection db}))]
     (let [app (-> app
                   (strip-prefix)
-                  (select-keys [:id :last_password_rotation :last_client_rotation :has_problems :redirect_url])
+                  (select-keys [:id :username :last_password_rotation :last_client_rotation :has_problems :redirect_url])
                   (assoc :accounts (->> (sql/read-accounts {:application_id application_id} {:connection db})
                                         (map #(strip-prefix %)))))]
       (log/debug "Found application %s with %s." application_id app)

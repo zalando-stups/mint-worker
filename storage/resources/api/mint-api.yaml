@@ -74,6 +74,8 @@ paths:
             properties:
               id:
                 type: string
+              username:
+                type: string
               last_password_rotation:
                 type: string
                 format: date-time
@@ -95,6 +97,7 @@ paths:
                       type: string
             required:
               - id
+              - application_username
               - has_problems
               - accounts
         default:
