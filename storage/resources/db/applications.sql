@@ -2,13 +2,15 @@
 SELECT ap_id,
        ap_last_password_rotation,
        ap_last_client_rotation,
+       ap_last_modified,
+       ap_last_synced,
        ap_has_problems
   FROM application;
 
 -- name: create-application!
 INSERT INTO application
-            (ap_id, ap_redirect_url, ap_username)
-     VALUES (:application_id, :redirect_url, :username);
+            (ap_id, ap_redirect_url, ap_username, ap_last_modified)
+     VALUES (:application_id, :redirect_url, :username, now());
 
 -- name: read-application
 SELECT ap_id,
@@ -17,20 +19,24 @@ SELECT ap_id,
        ap_client_id,
        ap_last_password_rotation,
        ap_last_client_rotation,
+       ap_last_modified,
+       ap_last_synced,
        ap_has_problems
   FROM application
  WHERE ap_id = :application_id;
 
 -- name: update-application!
 UPDATE application
-   SET ap_redirect_url = COALESCE(:redirect_url, ap_redirect_url)
+   SET ap_redirect_url = COALESCE(:redirect_url, ap_redirect_url),
+       ap_last_modified = now()
  WHERE ap_id = :application_id;
 
 -- name: update-application-status!
 UPDATE application
    SET ap_client_id = COALESCE(:client_id, ap_client_id),
-       ap_last_password_rotation = COALESCE(:last_password_rotation ::timestamp, ap_last_password_rotation),
+       ap_last_password_rotation = COALESCE(:last_password_rotation::timestamp, ap_last_password_rotation),
        ap_last_client_rotation = COALESCE(:last_client_rotation::timestamp, ap_last_client_rotation),
+       ap_last_synced = COALESCE(:last_synced::timestamp, ap_last_synced),
        ap_has_problems = COALESCE(:has_problems, ap_has_problems)
  WHERE ap_id = :application_id;
 

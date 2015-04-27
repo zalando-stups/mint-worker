@@ -53,7 +53,14 @@
   (if-let [app (first (sql/read-application {:application_id application_id} {:connection db}))]
     (let [app (-> app
                   (strip-prefix)
-                  (select-keys [:id :username :last_password_rotation :last_client_rotation :has_problems :redirect_url])
+                  (select-keys [:id
+                                :username
+                                :last_password_rotation
+                                :last_client_rotation
+                                :last_modified
+                                :last_synced
+                                :has_problems
+                                :redirect_url])
                   (assoc :accounts (->> (sql/read-accounts {:application_id application_id} {:connection db})
                                         (map #(strip-prefix %)))))]
       (log/debug "Found application %s with %s." application_id app)
@@ -72,20 +79,6 @@
     (do
       (jdbc/with-db-transaction
         [connection db]
-        ; check app base information
-        (if-let [app (first (sql/read-application {:application_id application_id} {:connection connection}))]
-          ; check for update
-          (if-not (= (:redirect_url app) (:redirect_url application))
-            (sql/update-application! {:application_id application_id
-                                      :redirect_url   (:redirect_url application)}
-                                     {:connection connection}))
-          ; create new app
-          (let [prefix (:username-prefix config)
-                username (if prefix (str prefix application_id) application_id)]
-            (sql/create-application! {:application_id application_id
-                                      :redirect_url   (:redirect_url application)
-                                      :username       username}
-                                     {:connection connection})))
         ; sync accounts
         (let [accounts-now (sql/read-accounts {:application_id application_id} {:connection connection})
               accounts-future (:accounts application)
@@ -100,6 +93,21 @@
                                        (fn [api-acc]
                                          (some #(account-matches? % api-acc) accounts-now))
                                        accounts-future)]
+          ; check app base information
+          (if-let [app (first (sql/read-application {:application_id application_id} {:connection connection}))]
+            ; check for update (either redirect_url or accounts have changed)
+            (if (or (not (= (:ap_redirect_url app) (:redirect_url application)))
+                    (> (+ (count accounts-to-be-created) (count accounts-to-be-deleted)) 0))
+              (sql/update-application! {:application_id application_id
+                                        :redirect_url   (:redirect_url application)}
+                                       {:connection connection}))
+            ; create new app
+            (let [prefix (:username-prefix config)
+                  username (if prefix (str prefix application_id) application_id)]
+              (sql/create-application! {:application_id application_id
+                                        :redirect_url   (:redirect_url application)
+                                        :username       username}
+                                       {:connection connection})))
           (doseq [db-acc accounts-to-be-deleted]
             (sql/delete-account! {:application_id application_id
                                   :account_id     (:ac_id db-acc)
@@ -117,19 +125,26 @@
   "Updates an existing application."
   [{:keys [application_id status]} _ db _]
   (log/debug "Update application status %s ..." application_id)
-  (sql/update-application-status! {:application_id         application_id
-                                   :client_id              (:client_id status)
-                                   :last_password_rotation (:last_password_rotation status)
-                                   :last_client_rotation   (:last_client_rotation status)
-                                   :has_problems           (:has_problems status)}
-                                  {:connection db})
-  (log/info "Updated application status %s with %s." application_id status)
-  (response nil))
+  (let [updated (> (sql/update-application-status! {:application_id         application_id
+                                                    :client_id              (:client_id status)
+                                                    :last_password_rotation (:last_password_rotation status)
+                                                    :last_client_rotation   (:last_client_rotation status)
+                                                    :last_synced            (:last_synced status)
+                                                    :has_problems           (:has_problems status)}
+                                                   {:connection db})
+                   0)]
+    (if updated
+      (do (log/info "Updated application status %s with %s." application_id status)
+          (response nil))
+      (not-found nil))))
 
 (defn delete-application
   "Deletes an application configuration."
   [{:keys [application_id]} _ db _]
   (log/debug "Delete application %s ..." application_id)
-  (sql/delete-application! {:application_id application_id} {:connection db})
-  (log/info "Deleted application %s." application_id)
-  (response nil))
+  (let [deleted (> (sql/delete-application! {:application_id application_id} {:connection db})
+                   0)]
+    (if deleted
+      (do (log/info "Deleted application %s." application_id)
+          (response nil))
+      (not-found nil))))

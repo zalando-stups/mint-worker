@@ -42,6 +42,12 @@ paths:
                 last_client_rotation:
                   type: string
                   format: date-time
+                last_modified:
+                  type: string
+                  format: date-time
+                last_synced:
+                  type: string
+                  format: date-time
                 has_problems:
                   type: boolean
               required:
@@ -82,6 +88,12 @@ paths:
               last_client_rotation:
                 type: string
                 format: date-time
+              last_modified:
+                type: string
+                format: date-time
+              last_synced:
+                type: string
+                format: date-time
               has_problems:
                 type: boolean
               redirect_url:
@@ -98,6 +110,7 @@ paths:
             required:
               - id
               - application_username
+              - last_modified
               - has_problems
               - accounts
         default:
@@ -155,6 +168,9 @@ paths:
                 type: string
                 format: date-time
               last_client_rotation:
+                type: string
+                format: date-time
+              last_synced:
                 type: string
                 format: date-time
               has_problems:
