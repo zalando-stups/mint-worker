@@ -34,7 +34,7 @@
                  :db (sql/map->DB {:configuration (:db configuration)})
                  :api (using
                         (api/map->API {:configuration (:http configuration)
-                                       :config (:mint configuration)})
+                                       :config        (:mint configuration)})
                         [:db]))]
 
     (system/run configuration system)))

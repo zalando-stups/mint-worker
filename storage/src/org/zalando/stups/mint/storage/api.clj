@@ -27,16 +27,7 @@
 (def default-http-configuration
   {:http-port 8080})
 
-;; credentials
-
-(defn keywordize
-  "Maps a String->Any map to Keyword->Any."
-  [m]
-  (into {} (map
-             (fn [[k v]] [(keyword k) v])
-             m)))
-
-(defn strip-prefix
+(defn- strip-prefix
   "Removes the database field prefix."
   [m]
   (let [prefix-pattern #"[a-z]+_(.+)"
