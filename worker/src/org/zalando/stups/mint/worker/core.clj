@@ -17,7 +17,7 @@
             [org.zalando.stups.friboo.config :as config]
             [org.zalando.stups.friboo.system :as system]
             [org.zalando.stups.friboo.log :as log]
-            [org.zalando.stups.mint.worker.jobs :as jobs])
+            [org.zalando.stups.mint.worker.job :as job])
   (:gen-class))
 
 (defn run
@@ -25,11 +25,11 @@
   [default-configuration]
   (let [configuration (config/load-configuration
                         [:jobs]
-                        [jobs/default-configuration
+                        [job/default-configuration
                          default-configuration])
 
         system (system-map
-                 :jobs (jobs/map->Jobs {:configuration (:jobs configuration)}))]
+                 :jobs (job/map->Jobs {:configuration (:jobs configuration)}))]
 
     (system/run configuration system)))
 
