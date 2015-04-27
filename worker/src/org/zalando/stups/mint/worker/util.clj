@@ -23,3 +23,12 @@
        json/read-str))
   ([url & path]
    (fetch (apply add-path url path))))
+
+(defn fetch-with
+  "GETs a JSON document and returns the parsed result."
+  ([method url]
+   (-> (client/request {:method method :url url})
+       :body
+       json/read-str))
+  ([method url & path]
+   (fetch-with method (apply add-path url path))))
