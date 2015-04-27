@@ -15,8 +15,8 @@ SELECT ap_id,
        ap_redirect_url,
        ap_username,
        ap_client_id,
-       ap_last_password_rotation::text,
-       ap_last_client_rotation::text,
+       ap_last_password_rotation,
+       ap_last_client_rotation,
        ap_has_problems
   FROM application
  WHERE ap_id = :application_id;
