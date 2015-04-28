@@ -26,9 +26,10 @@
 
 (defn fetch-with
   "GETs a JSON document and returns the parsed result."
-  ([method url]
-   (-> (client/request {:method method :url url})
+  ([body method url]
+   (-> (client/request {:method method :url url :body (when body (json/write-str body))})
        :body
        json/read-str))
-  ([method url & path]
-   (fetch-with method (apply add-path url path))))
+  ([body method url & path]
+   (fetch-with method body (apply add-path url path))))
+

@@ -9,7 +9,8 @@
 
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [org.zalando.stups/friboo "0.6.0"]
-                 [clj-http-lite "0.2.1"]]
+                 [clj-http-lite "0.2.1"]
+                 [clj-time "0.9.0"]]
 
   :main ^:skip-aot org.zalando.stups.mint.worker.core
   :uberjar-name "mint-worker.jar"

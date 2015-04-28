@@ -3,7 +3,8 @@
             [org.zalando.stups.mint.worker.job :as j]
             [org.zalando.stups.mint.worker.external.storage :as storage]
             [org.zalando.stups.mint.worker.external.apps :as apps]
-            [org.zalando.stups.mint.worker.external.services :as services]))
+            [org.zalando.stups.mint.worker.external.services :as services]
+            [clj-time.core :as time]))
 
 ; some utilities
 
@@ -28,9 +29,12 @@
 
 (defn track
   "Adds a tuple on call for an action."
-  [a action]
-  (fn [_ id]
-    (swap! a conj [action id])))
+  ([a action]
+   (fn [_ id]
+     (swap! a conj [action id])))
+  ([a action tracked-args]
+   (fn [& all-args]
+     (swap! a conj [action (into [] (map #(nth all-args %) tracked-args))]))))
 
 
 ;; resiliency (error tolerance of job)
@@ -46,13 +50,13 @@
     (j/run-sync test-config)))
 
 (deftest resiliency-individual-app
-  ; error on processing on app-> no bubble up, so job restarts in a imnute
+  ; error on processing on app-> no bubble up, so job restarts in a minute
   (with-redefs [storage/list-apps (always [{:id "foo"}])
                 storage/get-app (always (throw (ex-info "this should be catched" {})))]
     (j/run-sync test-config)))
 
 
-;; synchronisation of users
+;; synchronisation of apps
 
 (deftest sync-add-all-accs
   ; make sure, sync-app will be called for every account
@@ -64,44 +68,57 @@
       (j/run-sync test-config)
       (is (= #{[:sync-app "foo"] [:sync-app "bar"]} @calls)))))
 
+(def foo-app {:id            "foo"
+              :username      "stups_foo"
+              :last_modified (time/date-time 2015 4 28 18 0)
+              :last_synced   (time/date-time 2015 4 30 18 0)
+              :redirect_url  "http://localhost/foo"})
+
+(def foo-kio-app {:id      "foo"
+                  :team_id "bar"
+                  :name    "The Foo App"})
+
+(deftest sync-app
+  ; make sure, sync-app executes sync-user, sync-password and sync-client
+  (let [calls (atom #{})]
+    (with-redefs [j/sync-user (track calls :sync-user [0 1 2])
+                  j/sync-password (track calls :sync-password [0 1 2])
+                  j/sync-client (track calls :sync-client [0])
+                  storage/get-app (lookup {"foo" foo-app})
+                  apps/get-app (lookup {"foo" foo-kio-app})]
+      (j/sync-app test-config "foo")
+      (is (= #{[:sync-user [foo-app foo-kio-app test-config]]
+               [:sync-password [foo-app foo-kio-app test-config]]
+               [:sync-client [foo-app]]} @calls)))))
+
 (deftest sync-delete-inactive-apps
   ; check for inactive apps
   (let [calls (atom #{})]
 
     (with-redefs [services/list-users (always #{"stups_foo"})
-                  storage/get-app (lookup {"foo" {:id       "foo"
-                                                  :username "stups_foo"}})
-                  apps/get-app (lookup {"foo" {:id     "foo"
-                                               :active false}})
-                  services/delete-user (track calls :delete-service)]
+                  services/delete-user (track calls :delete-service [1])]
 
-      (j/sync-app test-config "foo")
-      (is (= #{[:delete-service "stups_foo"]} @calls)))))
+      (j/sync-user foo-app (assoc foo-kio-app :active false) test-config)
+      (is (= #{[:delete-service ["stups_foo"]]} @calls)))))
 
 (deftest sync-delete-inactive-apps-ignore
   ; check for inactive apps
   (let [calls (atom #{})]
 
     (with-redefs [services/list-users (always #{})
-                  storage/get-app (lookup {"foo" {:id       "foo"
-                                                  :username "stups_foo"}})
-                  apps/get-app (lookup {"foo" {:id     "foo"
-                                               :active false}})
                   services/delete-user (track calls :delete-service)]
 
-      (j/sync-app test-config "foo")
+      (j/sync-user foo-app (assoc foo-kio-app :active false) test-config)
       (is (= #{} @calls)))))
 
-(deftest sync-create-or-update-user
+(deftest sync-skip-unmodified-user
   ; check for inactive apps
   (let [calls (atom #{})]
     (with-redefs [services/list-users (always #{"stups_foo"})
-                  storage/get-app (lookup {"foo" {:id       "foo"
-                                                  :username "stups_foo"}})
-                  apps/get-app (lookup {"foo" {:id     "foo"
-                                               :active false}})
-                  services/delete-user (track calls :delete-service)]
-      (j/sync-app test-config "foo"))))
+                  services/delete-user (track calls :delete-service)
+                  services/create-or-update-user (track calls :create-or-update-user [])]
+      (j/sync-user foo-app (assoc foo-kio-app :active true) test-config)
+      (is (= #{} @calls)))))
 
 ;; password and client secret rotation
 

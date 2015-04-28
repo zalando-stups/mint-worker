@@ -12,3 +12,8 @@
   "GET /apps/{applicationId}"
   [storage-url app-id]
   (util/fetch storage-url "/apps/" app-id))
+
+(defn update-status
+  "PATCH /apps/{applicationId}"
+  [storage-url app-id body]
+  (util/fetch-with body :patch storage-url "/apps/" app-id))
