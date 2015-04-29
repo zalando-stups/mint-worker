@@ -122,7 +122,7 @@
       (j/sync-user (assoc foo-app :last_modified (time/date-time 2015 04 24 12 00)) foo-kio-app test-config)
       (is (= #{} @calls)))))
 
-(deftest create-or-update-user
+(deftest create-user
   ; a completely new app should be synced
   (let [calls (atom #{})]
     (with-redefs [services/create-or-update-user (track calls :create-or-update-user [1 2])
@@ -136,6 +136,23 @@
                                          :owner         "bar"
                                          :user_config   {:scopes []}}]]
                [:update-status ["foo"]]} @calls)))))
+
+(deftest update-user
+  ; a completely new app should be synced
+  (let [calls (atom #{})]
+    (with-redefs [services/create-or-update-user (track calls :create-or-update-user [1 2])
+                  storage/update-status (track calls :update-status [1 2])]
+      (j/sync-user foo-app foo-kio-app test-config)
+      (is (= (count @calls) 2))
+      (is (some #(= % [:create-or-update-user ["stups_foo"
+                                               {:client_config {:redirect_urls ["http://localhost/foo"]
+                                                                :scopes        []}
+                                                :id            "stups_foo"
+                                                :name          "The Foo App"
+                                                :owner         "bar"
+                                                :user_config   {:scopes []}}]]) @calls))
+      (is (some #(let [call-id (nth % 0)] (= call-id :update-status)) @calls)))))
+
 
 ;; password and client secret rotation
 
