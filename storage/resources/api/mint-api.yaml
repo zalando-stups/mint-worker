@@ -107,6 +107,26 @@ paths:
                       type: string
                     type:
                       type: string
+              resource_owner_scopes:
+                description: List of scopes
+                type: array
+                items:
+                  type: object
+                  properties:
+                    resource_type_id:
+                      type: string
+                    scope_id:
+                      type: string
+              application_scopes:
+                description: List of scopes
+                type: array
+                items:
+                  type: object
+                  properties:
+                    resource_type_id:
+                      type: string
+                    scope_id:
+                      type: string
             required:
               - id
               - application_username
@@ -141,6 +161,26 @@ paths:
                     id:
                       type: string
                     type:
+                      type: string
+              resource_owner_scopes:
+                description: List of scopes
+                type: array
+                items:
+                  type: object
+                  properties:
+                    resource_type_id:
+                      type: string
+                    scope_id:
+                      type: string
+              application_scopes:
+                description: List of scopes
+                type: array
+                items:
+                  type: object
+                  properties:
+                    resource_type_id:
+                      type: string
+                    scope_id:
                       type: string
       responses:
         200:
