@@ -1,5 +1,6 @@
 (ns org.zalando.stups.mint.worker.job-test
   (:require [clojure.test :refer :all]
+            [io.sarnowski.swagger1st.parser]                ; Joda DateTime extension for json/JSONWriter. Needed for logging.
             [org.zalando.stups.mint.worker.job :as j]
             [org.zalando.stups.mint.worker.external.storage :as storage]
             [org.zalando.stups.mint.worker.external.apps :as apps]
@@ -70,13 +71,14 @@
 
 (def foo-app {:id            "foo"
               :username      "stups_foo"
-              :last_modified (time/date-time 2015 4 28 18 0)
-              :last_synced   (time/date-time 2015 4 30 18 0)
+              :last_modified (time/date-time 2015 4 30 18 0)
+              :last_synced   (time/date-time 2015 4 28 18 0)
               :redirect_url  "http://localhost/foo"})
 
 (def foo-kio-app {:id      "foo"
                   :team_id "bar"
-                  :name    "The Foo App"})
+                  :name    "The Foo App"
+                  :active  true})
 
 (deftest sync-app
   ; make sure, sync-app executes sync-user, sync-password and sync-client
@@ -92,7 +94,7 @@
                [:sync-client [foo-app]]} @calls)))))
 
 (deftest sync-delete-inactive-apps
-  ; check for inactive apps
+  ; makes sure, that an app which became inactive, but has already been synced before, will be deleted
   (let [calls (atom #{})]
 
     (with-redefs [services/list-users (always #{"stups_foo"})
@@ -102,7 +104,7 @@
       (is (= #{[:delete-service ["stups_foo"]]} @calls)))))
 
 (deftest sync-delete-inactive-apps-ignore
-  ; check for inactive apps
+  ; an inactive app, which has not been synced yet, should be ignored
   (let [calls (atom #{})]
 
     (with-redefs [services/list-users (always #{})
@@ -112,13 +114,28 @@
       (is (= #{} @calls)))))
 
 (deftest sync-skip-unmodified-user
-  ; check for inactive apps
+  ; an app, that has already been synced and did not change again, should simply be skipped
   (let [calls (atom #{})]
     (with-redefs [services/list-users (always #{"stups_foo"})
                   services/delete-user (track calls :delete-service)
                   services/create-or-update-user (track calls :create-or-update-user [])]
-      (j/sync-user foo-app (assoc foo-kio-app :active true) test-config)
+      (j/sync-user (assoc foo-app :last_modified (time/date-time 2015 04 24 12 00)) foo-kio-app test-config)
       (is (= #{} @calls)))))
+
+(deftest create-or-update-user
+  ; a completely new app should be synced
+  (let [calls (atom #{})]
+    (with-redefs [services/create-or-update-user (track calls :create-or-update-user [1 2])
+                  storage/update-status (track calls :update-status [1])]
+      (j/sync-user (assoc foo-app :last_synced nil) foo-kio-app test-config)
+      (is (= #{[:create-or-update-user ["stups_foo"
+                                        {:client_config {:redirect_urls ["http://localhost/foo"]
+                                                         :scopes        []}
+                                         :id            "stups_foo"
+                                         :name          "The Foo App"
+                                         :owner         "bar"
+                                         :user_config   {:scopes []}}]]
+               [:update-status ["foo"]]} @calls)))))
 
 ;; password and client secret rotation
 

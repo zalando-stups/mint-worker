@@ -8,14 +8,15 @@
   :min-lein-version "2.0.0"
 
   :dependencies [[org.clojure/clojure "1.6.0"]
-                 [org.zalando.stups/friboo "0.6.0"]
+                 [org.zalando.stups/friboo "0.8.0"]
                  [clj-http-lite "0.2.1"]
                  [clj-time "0.9.0"]]
 
   :main ^:skip-aot org.zalando.stups.mint.worker.core
   :uberjar-name "mint-worker.jar"
 
-  :plugins [[io.sarnowski/lein-docker "1.1.0"]]
+  :plugins [[io.sarnowski/lein-docker "1.1.0"]
+            [lein-cloverage "1.0.3"]]
 
   :docker {:image-name "stups/mint-worker"}
 
