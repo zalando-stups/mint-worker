@@ -125,18 +125,16 @@
   "Updates an existing application."
   [{:keys [application_id status]} _ db _]
   (log/debug "Update application status %s ..." application_id)
-  (let [updated (> (sql/update-application-status! {:application_id         application_id
-                                                    :client_id              (:client_id status)
-                                                    :last_password_rotation (:last_password_rotation status)
-                                                    :last_client_rotation   (:last_client_rotation status)
-                                                    :last_synced            (:last_synced status)
-                                                    :has_problems           (:has_problems status)}
-                                                   {:connection db})
-                   0)]
-    (if updated
-      (do (log/info "Updated application status %s with %s." application_id status)
-          (response nil))
-      (not-found nil))))
+  (if (pos? (sql/update-application-status! {:application_id         application_id
+                                             :client_id              (:client_id status)
+                                             :last_password_rotation (:last_password_rotation status)
+                                             :last_client_rotation   (:last_client_rotation status)
+                                             :last_synced            (:last_synced status)
+                                             :has_problems           (:has_problems status)}
+                                            {:connection db}))
+    (do (log/info "Updated application status %s with %s." application_id status)
+        (response nil))
+    (not-found nil)))
 
 (defn delete-application
   "Deletes an application configuration."
