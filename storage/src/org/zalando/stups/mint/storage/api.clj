@@ -76,17 +76,23 @@
 
 (defn read-applications
   "Returns all application configurations."
-  [_ _ db _]
-  ; TODO implement filtering
-  (log/debug "Reading all application configurations...")
-  (->> (sql/read-applications {} {:connection db})
-       (map strip-prefix)
-       (map #(update-in % [:last_synced] from-sql-time))
-       (map #(update-in % [:last_modified] from-sql-time))
-       (map #(update-in % [:last_client_rotation] from-sql-time))
-       (map #(update-in % [:last_password_rotation] from-sql-time))
-       (response)
-       (content-type-json)))
+  [{:keys [resource_type_id scope_id]} _ db _]
+  (let [db-result
+        (if (or resource_type_id scope_id)
+          (do (log/debug "Reading application configurations with resource_type '%s' and scope '%s'..."
+                         resource_type_id scope_id)
+              (sql/filter-applications {:resource_type_id resource_type_id :scope_id scope_id} {:connection db}))
+          (do (log/debug "Reading application configurations with resource_type '%s' and scope '%s'..."
+                         resource_type_id scope_id)
+              (sql/read-applications {} {:connection db})))]
+    (->> db-result
+         (map strip-prefix)
+         (map #(update-in % [:last_synced] from-sql-time))
+         (map #(update-in % [:last_modified] from-sql-time))
+         (map #(update-in % [:last_client_rotation] from-sql-time))
+         (map #(update-in % [:last_password_rotation] from-sql-time))
+         (response)
+         (content-type-json))))
 
 (defn read-application
   "Returns detailed information about one application configuration."

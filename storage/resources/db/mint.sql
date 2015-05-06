@@ -7,6 +7,18 @@ SELECT a_id,
        a_has_problems
   FROM zm_data.application;
 
+-- name: filter-applications
+SELECT a_id,
+       a_last_password_rotation,
+       a_last_client_rotation,
+       a_last_modified,
+       a_last_synced,
+       a_has_problems
+  FROM zm_data.application
+  JOIN zm_data.scope ON s_application_id = a_id
+ WHERE s_resource_type_id = COALESCE(:resource_type_id, s_resource_type_id)
+   AND s_scope_id = COALESCE(:scope_id, s_scope_id);
+
 -- name: create-application!
 INSERT INTO zm_data.application
             (a_id, a_redirect_url, a_username, a_s3_buckets, a_last_modified)
