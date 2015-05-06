@@ -8,7 +8,7 @@
   :min-lein-version "2.0.0"
 
   :dependencies [[org.clojure/clojure "1.6.0"]
-                 [org.zalando.stups/friboo "0.8.0"]
+                 [org.zalando.stups/friboo "0.9.0"]
                  [clj-http-lite "0.2.1"]
                  [clj-time "0.9.0"]]
 
