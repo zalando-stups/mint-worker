@@ -60,22 +60,22 @@ paths:
                   type: string
                   format: date-time
                   description: Last time, the password has been changed
-                  example: "2015-06-14T15:30:00Z+01:00"
+                  example: "2015-06-14T15:30:00.000Z"
                 last_client_rotation:
                   type: string
                   format: date-time
                   description: Last time, the client credentials have been changed
-                  example: "2015-06-14T15:30:00Z+01:00"
+                  example: "2015-06-14T15:30:00.000Z"
                 last_modified:
                   type: string
                   format: date-time
                   description: Last time, the configuration has been udated
-                  example: "2015-06-14T15:30:00Z+01:00"
+                  example: "2015-06-14T15:30:00.000+01:00"
                 last_synced:
                   type: string
                   format: date-time
                   description: Last time, the configuration has been synced to the service user API
-                  example: "2015-06-14T15:30:00Z+01:00"
+                  example: "2015-06-14T15:30:00.000Z"
                 has_problems:
                   type: boolean
                   description: Indicates, if an error occurred during the last sync
@@ -114,22 +114,22 @@ paths:
                 type: string
                 format: date-time
                 description: Last time, the password has been changed
-                example: "2015-06-14T15:30:00Z+01:00"
+                example: "2015-06-14T15:30:00.000Z"
               last_client_rotation:
                 type: string
                 format: date-time
                 description: Last time, the client credentials have been changed
-                example: "2015-06-14T15:30:00Z+01:00"
+                example: "2015-06-14T15:30:00.000Z"
               last_modified:
                 type: string
                 format: date-time
                 description: Last time, the configuration has been udated
-                example: "2015-06-14T15:30:00Z+01:00"
+                example: "2015-06-14T15:30:00.000Z"
               last_synced:
                 type: string
                 format: date-time
                 description: Last time, the configuration has been synced to the service user API
-                example: "2015-06-14T15:30:00Z+01:00"
+                example: "2015-06-14T15:30:00.000+02:00"
               has_problems:
                 type: boolean
                 description: Indicates, if an error occurred during the last sync
@@ -295,17 +295,17 @@ definitions:
         type: string
         format: date-time
         description: Last time, the password has been changed
-        example: "2015-06-14T15:30:00Z+01:00"
+        example: "2015-06-14T15:30:00.000Z"
       last_client_rotation:
         type: string
         format: date-time
         description: Last time, the client credentials have been changed
-        example: "2015-06-14T15:30:00Z+01:00"
+        example: "2015-06-14T15:30:00.000+01:00"
       last_synced:
         type: string
         format: date-time
         description: Last time, the configuration has been synced to the service user API
-        example: "2015-06-14T15:30:00Z+01:00"
+        example: "2015-06-14T15:30:00.000+02:00"
       has_problems:
         type: boolean
         description: Indicates, if an error occurred during the last sync

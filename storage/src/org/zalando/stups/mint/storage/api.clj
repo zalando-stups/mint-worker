@@ -13,19 +13,29 @@
 ; limitations under the License.
 
 (ns org.zalando.stups.mint.storage.api
-  (:require [org.zalando.stups.friboo.system.http :refer [def-http-component]]
-            [org.zalando.stups.mint.storage.sql :as sql]
-            [clojure.data.json :refer [JSONWriter]]
-            [ring.util.response :refer :all]
-            [org.zalando.stups.friboo.ring :refer :all]
+  (:require [org.zalando.stups.mint.storage.sql :as sql]
             [org.zalando.stups.friboo.log :as log]
-            [clojure.java.jdbc :as jdbc]))
+            [org.zalando.stups.friboo.ring :refer :all]
+            [org.zalando.stups.friboo.system.http :refer [def-http-component]]
+            [ring.util.response :refer :all]
+            [clojure.data.json :refer [JSONWriter]]
+            [clojure.java.jdbc :as jdbc]
+            [clojure.set :as set]
+            [clojure.string :as str]
+            [clj-time.coerce :refer [to-sql-time from-sql-time]]))
 
 ; define the API component and its dependencies
 (def-http-component API "api/mint-api.yaml" [db config])
 
 (def default-http-configuration
   {:http-port 8080})
+
+(defn- scopes-compared
+  [scope1 scope2]
+  (let [resource-type-id-compared (compare (:resource_type_id scope1) (:resource_type_id scope2))]
+    (if (not= resource-type-id-compared 0)
+      resource-type-id-compared
+      (compare (:scope_id scope1) (:scope_id scope2)))))
 
 (defn- strip-prefix
   "Removes the database field prefix."
@@ -37,12 +47,44 @@
                (fn [[k v]] [(remove-prefix k) v])
                m))))
 
+(defn- parse-s3-buckets
+  "Splits a comma-separated string into a sorted set"
+  [string]
+  (if string
+    (->> (str/split string #",")
+         (remove str/blank?)
+         (apply sorted-set))
+    (sorted-set)))
+
+(defn- load-scopes
+  [application_id db]
+  (->> (sql/read-scopes {:application_id application_id} {:connection db})
+       (map strip-prefix)
+       (apply sorted-set-by scopes-compared)))
+
+(defn- load-application
+  [application_id db]
+  (when-first [row (sql/read-application {:application_id application_id} {:connection db})]
+    (-> row
+        strip-prefix
+        (update-in [:s3_buckets] parse-s3-buckets)
+        (update-in [:last_synced] from-sql-time)
+        (update-in [:last_modified] from-sql-time)
+        (update-in [:last_client_rotation] from-sql-time)
+        (update-in [:last_password_rotation] from-sql-time)
+        (assoc :scopes (load-scopes application_id db)))))
+
 (defn read-applications
   "Returns all application configurations."
   [_ _ db _]
-  (log/debug "Listing all application configurations...")
+  ; TODO implement filtering
+  (log/debug "Reading all application configurations...")
   (->> (sql/read-applications {} {:connection db})
-       (map #(strip-prefix %))
+       (map strip-prefix)
+       (map #(update-in % [:last_synced] from-sql-time))
+       (map #(update-in % [:last_modified] from-sql-time))
+       (map #(update-in % [:last_client_rotation] from-sql-time))
+       (map #(update-in % [:last_password_rotation] from-sql-time))
        (response)
        (content-type-json)))
 
@@ -50,74 +92,67 @@
   "Returns detailed information about one application configuration."
   [{:keys [application_id]} _ db _]
   (log/debug "Reading information about application %s..." application_id)
-  (if-let [app (first (sql/read-application {:application_id application_id} {:connection db}))]
-    (let [app (-> app
-                  (strip-prefix)
-                  (select-keys [:id
+  (if-let [app (load-application application_id db)]
+    (let [app (select-keys app [:id
                                 :username
                                 :last_password_rotation
                                 :last_client_rotation
                                 :last_modified
                                 :last_synced
                                 :has_problems
-                                :redirect_url])
-                  (assoc :accounts (->> (sql/read-accounts {:application_id application_id} {:connection db})
-                                        (map #(strip-prefix %)))))]
+                                :redirect_url
+                                :s3_buckets
+                                :scopes])]
       (log/debug "Found application %s with %s." application_id app)
-      (-> (response app)
-          (content-type-json)))
+      (content-type-json (response app)))
     (not-found nil)))
 
 (defn create-or-update-application
-  "Creates or updates an appliction. If no accounts are given, deletes the application."
+  "Creates or updates an appliction. If no s3 buckets are given, deletes the application."
   [{:keys [application_id application]} _ db config]
   (log/debug "Creating or updating application %s with %s..." application_id application)
-  (if (empty? (:accounts application))
+  (if (empty? (:s3_buckets application))
     (do
       (sql/delete-application! {:application_id application_id} {:connection db})
-      (log/info "Deleted application %s because no accounts were given." application_id))
+      (log/info "Deleted application %s because no s3 buckets were given." application_id))
     (do
       (jdbc/with-db-transaction
         [connection db]
-        ; sync accounts
-        (let [accounts-now (sql/read-accounts {:application_id application_id} {:connection connection})
-              accounts-future (:accounts application)
-              account-matches? (fn [db-acc api-acc]
-                                 (and (= (:ac_id db-acc) (:id api-acc))
-                                      (= (:ac_type db-acc) (:type api-acc))))
-              accounts-to-be-deleted (remove
-                                       (fn [db-acc]
-                                         (some #(account-matches? db-acc %) accounts-future))
-                                       accounts-now)
-              accounts-to-be-created (remove
-                                       (fn [api-acc]
-                                         (some #(account-matches? % api-acc) accounts-now))
-                                       accounts-future)]
-          ; check app base information
-          (if-let [app (first (sql/read-application {:application_id application_id} {:connection connection}))]
-            ; check for update (either redirect_url or accounts have changed)
-            (if (or (not (= (:ap_redirect_url app) (:redirect_url application)))
-                    (> (+ (count accounts-to-be-created) (count accounts-to-be-deleted)) 0))
+        ; check app base information
+        (let [db-app (load-application application_id db)
+              new-s3-buckets (apply sorted-set (:s3_buckets application))
+              new-scopes (apply sorted-set-by scopes-compared (:scopes application))
+              prefix (:username-prefix config)
+              username (if prefix (str prefix application_id) application_id)]
+          ; sync app
+          (if db-app
+            ; check for update (either redirect_url, s3_buckets or scopes have changed)
+            (when-not (and (= (:redirect_url db-app) (:redirect_url application))
+                           (= (:s3_buckets db-app) new-s3-buckets)
+                           (= (:scopes db-app) new-scopes))
               (sql/update-application! {:application_id application_id
-                                        :redirect_url   (:redirect_url application)}
+                                        :redirect_url   (:redirect_url application)
+                                        :s3_buckets     (str/join "," new-s3-buckets)}
                                        {:connection connection}))
             ; create new app
-            (let [prefix (:username-prefix config)
-                  username (if prefix (str prefix application_id) application_id)]
-              (sql/create-application! {:application_id application_id
-                                        :redirect_url   (:redirect_url application)
-                                        :username       username}
-                                       {:connection connection})))
-          (doseq [db-acc accounts-to-be-deleted]
-            (sql/delete-account! {:application_id application_id
-                                  :account_id     (:ac_id db-acc)
-                                  :account_type   (:ac_type db-acc)}
+            (sql/create-application! {:application_id application_id
+                                      :redirect_url   (:redirect_url application)
+                                      :s3_buckets     (str/join "," new-s3-buckets)
+                                      :username       username}
+                                     {:connection connection}))
+          ; sync scopes
+          (let [scopes-to-be-created (set/difference new-scopes (:scopes db-app))
+                scopes-to-be-deleted (set/difference (:scopes db-app) new-scopes)]
+            (doseq [scope scopes-to-be-created]
+              (sql/create-scope! {:application_id   application_id
+                                  :resource_type_id (:resource_type_id scope)
+                                  :scope_id         (:scope_id scope)}
                                  {:connection connection}))
-          (doseq [api-acc accounts-to-be-created]
-            (sql/create-account! {:application_id application_id
-                                  :account_id     (:id api-acc)
-                                  :account_type   (:type api-acc)}
-                                 {:connection connection}))))
+            (doseq [scope scopes-to-be-deleted]
+              (sql/delete-scope! {:application_id   application_id
+                                  :resource_type_id (:resource_type_id scope)
+                                  :scope_id         (:scope_id scope)}
+                                 {:connection connection})))))
       (log/info "Updated application %s with %s." application_id application)))
   (response nil))
 
@@ -127,9 +162,9 @@
   (log/debug "Update application status %s ..." application_id)
   (if (pos? (sql/update-application-status! {:application_id         application_id
                                              :client_id              (:client_id status)
-                                             :last_password_rotation (:last_password_rotation status)
-                                             :last_client_rotation   (:last_client_rotation status)
-                                             :last_synced            (:last_synced status)
+                                             :last_password_rotation (to-sql-time (:last_password_rotation status))
+                                             :last_client_rotation   (to-sql-time (:last_client_rotation status))
+                                             :last_synced            (to-sql-time (:last_synced status))
                                              :has_problems           (:has_problems status)}
                                             {:connection db}))
     (do (log/info "Updated application status %s with %s." application_id status)
@@ -140,8 +175,7 @@
   "Deletes an application configuration."
   [{:keys [application_id]} _ db _]
   (log/debug "Delete application %s ..." application_id)
-  (let [deleted (> (sql/delete-application! {:application_id application_id} {:connection db})
-                   0)]
+  (let [deleted (pos? (sql/delete-application! {:application_id application_id} {:connection db}))]
     (if deleted
       (do (log/info "Deleted application %s." application_id)
           (response nil))

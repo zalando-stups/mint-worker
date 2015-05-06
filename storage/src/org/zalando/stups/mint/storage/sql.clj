@@ -23,6 +23,7 @@
    :db-subprotocol "postgresql"
    :db-subname     "//localhost:5432/mint"
    :db-user        "postgres"
-   :db-password    "postgres"})
+   :db-password    "postgres"
+   :db-init-sql    "SET search_path TO zm_data, public"})
 
-(defqueries "db/applications.sql")
+(defqueries "db/mint.sql")
