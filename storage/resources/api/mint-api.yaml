@@ -147,7 +147,7 @@ paths:
                   access to this bucket and the application itself need read access.
                 items:
                   type: string
-                  example: example-org-stups-credentials
+                  example: example-org-stups-mint
               scopes:
                 type: array
                 description: |
@@ -266,7 +266,7 @@ definitions:
           access to this bucket and the application itself needs read access.
         items:
           type: string
-          example: example-org-stups-yourturn-credentials
+          example: example-org-stups-mint
           pattern: "^[a-z0-9][a-z0-9-.]{1,61}[a-z0-9]$"
       scopes:
         type: array
