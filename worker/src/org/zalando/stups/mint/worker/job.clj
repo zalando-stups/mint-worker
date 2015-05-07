@@ -7,13 +7,23 @@
             [org.zalando.stups.mint.worker.external.services :as services]
             [org.zalando.stups.mint.worker.external.apps :as apps]
             [org.zalando.stups.mint.worker.external.s3 :as s3]
+            [org.zalando.stups.mint.worker.external.scopes :as scopes]
             [clj-time.core :as time]
-            [clj-time.coerce :refer [from-date to-date]]))
+            [clj-time.coerce :refer [from-date to-date]]
+            [clojure.string :as str]))
 
 (def default-configuration
   {:jobs-cpu-count        1
    :jobs-every-ms         10000
    :jobs-initial-delay-ms 1000})
+
+(defn- classify-scopes
+  [scope-list configuration]
+  ; TODO
+  {})
+  ;(let [essentials-url (config/require-config configuration :essentials-url)]
+  ;  (-> (group-by #(if (:is_resource_owner_scope {:is_resource_owner_scope true :foo %}) :resource-owner-scopes :application-user-scopes) [{:resource_type_id "sales-order" :scope_id "read"} {:resource_type_id "sales-order" :scope_id "write"}])
+  ;      (update-in [:resource-owner-scopes] #(mapcat (fn [scope] (map (fn [resource_owner] {:realm resource_owner :scopes [(str (:resource_type_id scope) "." (:scope_id scope))]}) (:resource_owners {:resource_owners ["customers" "employees"]}))) %))))
 
 (defn sync-user
   "If neccessary, creates or deletes service users."
@@ -36,14 +46,15 @@
       (if (time/after? (:last_modified app) (:last_synced app))
         (do
           (log/info "Synchronizing app %s..." app)
-          (services/create-or-update-user service-user-url
-                                          username
-                                          {:id            username
-                                           :name          (:name kio-app)
-                                           :owner         team-id
-                                           :client_config {:redirect_urls [(:redirect_url app)]
-                                                           :scopes        []} ; TODO add realm specific scopes here
-                                           :user_config   {:scopes []}}) ; TODO add scopes
+          (let [scopes (classify-scopes (:scopes app) configuration)]
+            (services/create-or-update-user service-user-url
+                                            username
+                                            {:id            username
+                                             :name          (:name kio-app)
+                                             :owner         team-id
+                                             :client_config {:redirect_urls [(:redirect_url app)]
+                                                             :scopes        (:resource-owner-scopes scopes)}
+                                             :user_config   {:scopes (:application-user-scopes scopes)}}))
           (log/info "Updating last_synced time of application %s..." app-id)
           (storage/update-status storage-url app-id {:last_synced (time/now)})
           (log/info "Successfully synced application %s" app-id))
@@ -66,11 +77,13 @@
         (log/info "Acquiring new password for %s..." username)
         (let [generate-pw-response (services/generate-new-password service-user-url username)
               password (:password generate-pw-response)
-              txid (:txid generate-pw-response)]
+              txid (:txid generate-pw-response)
+              bucket-names (:s3_buckets app)]
           ((try
              (do
-               (log/info "Saving the new password for %s to S3..." app-id)
-               (s3/save-user team-id app-id username password)
+               (log/info "Saving the new password for %s to S3 buckets: %s..." app-id bucket-names)
+               (doseq [bucket-name bucket-names]
+                 (s3/save-user bucket-name app-id username password))
                (services/commit-password service-user-url username {:txid txid})
                (log/info "Successfully rotated password for app %s" app-id))
              (catch Exception e
