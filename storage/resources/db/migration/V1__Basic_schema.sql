@@ -15,7 +15,8 @@ CREATE TABLE application (
   a_last_synced            TIMESTAMPTZ,
 
   a_has_problems           BOOLEAN     NOT NULL DEFAULT FALSE,
-  a_s3_buckets             TEXT        NOT NULL
+  a_s3_buckets             TEXT        NOT NULL,
+  a_is_client_confidential BOOLEAN     NOT NULL
 );
 
 COMMENT ON COLUMN application.a_s3_buckets IS 'comma-separated list';

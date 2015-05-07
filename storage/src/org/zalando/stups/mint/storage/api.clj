@@ -107,6 +107,7 @@
                                 :last_synced
                                 :has_problems
                                 :redirect_url
+                                :is_client_confidential
                                 :s3_buckets
                                 :scopes])]
       (log/debug "Found application %s with %s." application_id app)
@@ -132,19 +133,22 @@
               username (if prefix (str prefix application_id) application_id)]
           ; sync app
           (if db-app
-            ; check for update (either redirect_url, s3_buckets or scopes have changed)
+            ; check for update (did anything change?)
             (when-not (and (= (:redirect_url db-app) (:redirect_url application))
+                           (= (:is_client_confidential db-app) (:is_client_confidential application))
                            (= (:s3_buckets db-app) new-s3-buckets)
                            (= (:scopes db-app) new-scopes))
-              (sql/update-application! {:application_id application_id
-                                        :redirect_url   (:redirect_url application)
-                                        :s3_buckets     (str/join "," new-s3-buckets)}
+              (sql/update-application! {:application_id         application_id
+                                        :redirect_url           (:redirect_url application)
+                                        :is_client_confidential (:is_client_confidential application)
+                                        :s3_buckets             (str/join "," new-s3-buckets)}
                                        {:connection connection}))
             ; create new app
-            (sql/create-application! {:application_id application_id
-                                      :redirect_url   (:redirect_url application)
-                                      :s3_buckets     (str/join "," new-s3-buckets)
-                                      :username       username}
+            (sql/create-application! {:application_id         application_id
+                                      :redirect_url           (:redirect_url application)
+                                      :is_client_confidential (:is_client_confidential application)
+                                      :s3_buckets             (str/join "," new-s3-buckets)
+                                      :username               username}
                                      {:connection connection}))
           ; sync scopes
           (let [scopes-to-be-created (set/difference new-scopes (:scopes db-app))
