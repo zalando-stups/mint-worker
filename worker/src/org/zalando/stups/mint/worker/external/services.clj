@@ -21,5 +21,13 @@
   (util/fetch-with nil :post service-user-url "/services/" username "/password"))
 
 (defn commit-password
-  [service-user-url username body]
-  (util/fetch-with body :put service-user-url "/services/" username "/password"))
+  [service-user-url username transaction-id]
+  (util/fetch-with {:txid transaction-id} :put service-user-url "/services/" username "/password"))
+
+(defn generate-new-client
+  [service-user-url username]
+  (util/fetch-with nil :post service-user-url "/services/" username "/client"))
+
+(defn commit-client
+  [service-user-url username client-id]
+  (util/fetch-with {:id username :client:id client-id} :put service-user-url "/services/" username "/client"))

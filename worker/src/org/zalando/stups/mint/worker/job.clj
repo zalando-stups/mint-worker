@@ -87,7 +87,7 @@
                                              :owner         team-id
                                              :client_config {:redirect_urls [(:redirect_url app)]
                                                              :scopes        (:owner-scope scopes)
-                                                             :confidential  (:is_client_confidential app)}  ; TODO is this key correct?
+                                                             :confidential  (:is_client_confidential app)} ; TODO is this key correct?
                                              :user_config   {:scopes (:application-scope scopes)}}))
           (log/info "Updating last_synced time of application %s..." app-id)
           (storage/update-status storage-url app-id {:last_synced (time/now)})
@@ -98,9 +98,9 @@
 
 (defn sync-password
   "If neccessary, creates and syncs a new password for the given app."
-  [app kio-app configuration]
+  [app configuration]
   (let [storage-url (config/require-config configuration :storage-url)
-        service-user-url (config/require-config configuration :storage-url)
+        service-user-url (config/require-config configuration :service-user-url)
         username (:username app)
         app-id (:id app)]
     (if (or (nil? (:last_password_rotation app))
@@ -112,30 +112,45 @@
               password (:password generate-pw-response)
               txid (:txid generate-pw-response)
               bucket-names (:s3_buckets app)]
-          ((try
-             (do
-               (log/info "Saving the new password for %s to S3 buckets: %s..." app-id bucket-names)
-               (doseq [bucket-name bucket-names]
-                 (s3/save-user bucket-name app-id username password))
-               (services/commit-password service-user-url username {:txid txid})
-               (log/info "Successfully rotated password for app %s" app-id))
-             (catch Exception e
-               (log/error e "Could not rotate password for app %s" app-id)
-               (storage/update-status storage-url app-id {:has_problems true})))))) ; todo when to recover has_problems?
+          (try
+            (do
+              (log/info "Saving the new password for %s to S3 buckets: %s..." app-id bucket-names)
+              (doseq [bucket-name bucket-names]
+                (s3/save-user bucket-name app-id username password))
+              (services/commit-password service-user-url username txid)
+              (log/info "Successfully rotated password for app %s" app-id))
+            (catch Exception e
+              (log/error e "Could not rotate password for app %s" app-id)
+              (storage/update-status storage-url app-id {:has_problems true}))))) ; todo when to recover has_problems?
 
       ; else
       (log/debug "Password for app %s is still valid. Skip password rotation." app-id))))
 
 (defn sync-client
   "If neccessary, creates and syncs new client credentials for the given app"
-  [app]
-  (let [app-id (:id app)]
+  [app configuration]
+  (let [service-user-url (config/require-config configuration :service-user-url)
+        storage-url (config/require-config configuration :storage-url)
+        app-id (:id app)
+        username (:username app)
+        bucket-names (:s3_buckets app)]
     (if (or (nil? (:last_client_rotation app))
             (time/after? (time/now) (time/plus (from-date (:last_client_rotation app)) (time/months 1))))
       (do
-        ; TODO handle applications, that require a constant client (e.g. mobile apps)
-        ; TODO do the client rotation
-        (log/debug "TODO"))
+        (log/debug "Acquiring a new client for app %s..." app-id)
+        (let [generate-client-response (services/generate-new-client service-user-url username)
+              client-id (:client_id generate-client-response)
+              client-secret (:client_secret generate-client-response)]
+          (try
+            (do
+              (log/info "Saving the new client for %s to S3 buckets: %s..." app-id bucket-names)
+              (doseq [bucket-name bucket-names]
+                (s3/save-client bucket-name app-id client-id client-secret))
+              (services/commit-client service-user-url username client-id)
+              (log/info "Successfully rotated client for app %s" app-id))
+            (catch Exception e
+              (log/error e "Could not rotate client for app %s" app-id)
+              (storage/update-status storage-url app-id {:has_problems true})))))
 
       ; else
       (log/info "Client for app %s is still valid. Skip client rotation." app-id))))
@@ -149,8 +164,13 @@
         kio-app (apps/get-app kio-url app-id)]
     ; TODO handle 404 from kio for app
     (sync-user app kio-app configuration)
-    (sync-password app kio-app configuration)
-    (sync-client app)))
+    (if (:active kio-app)
+      (if (:is_client_confidential app)
+        (do
+          (sync-password app configuration)
+          (sync-client app configuration))
+        (log/debug "Skip password and client rotation for public client %" app-id))
+      (log/debug "Skip password and client rotation for inactive app %" app-id))))
 
 (defn run-sync
   "Creates and deletes applications, rotates and distributes their credentials."
