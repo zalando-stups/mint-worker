@@ -86,7 +86,8 @@
                                              :name          (:name kio-app)
                                              :owner         team-id
                                              :client_config {:redirect_urls [(:redirect_url app)]
-                                                             :scopes        (:owner-scope scopes)}
+                                                             :scopes        (:owner-scope scopes)
+                                                             :confidential  (:is_client_confidential app)}  ; TODO is this key correct?
                                              :user_config   {:scopes (:application-scope scopes)}}))
           (log/info "Updating last_synced time of application %s..." app-id)
           (storage/update-status storage-url app-id {:last_synced (time/now)})
@@ -101,8 +102,7 @@
   (let [storage-url (config/require-config configuration :storage-url)
         service-user-url (config/require-config configuration :storage-url)
         username (:username app)
-        app-id (:id app)
-        team-id (:team_id kio-app)]
+        app-id (:id app)]
     (if (or (nil? (:last_password_rotation app))
             (time/after? (time/now)
                          (-> (:last_password_rotation app) (time/plus (time/hours 2)))))
