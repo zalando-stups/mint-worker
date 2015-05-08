@@ -9,21 +9,54 @@
             [org.zalando.stups.mint.worker.external.s3 :as s3]
             [org.zalando.stups.mint.worker.external.scopes :as scopes]
             [clj-time.core :as time]
-            [clj-time.coerce :refer [from-date to-date]]
-            [clojure.string :as str]))
+            [clj-time.coerce :refer [from-date to-date]]))
 
 (def default-configuration
   {:jobs-cpu-count        1
    :jobs-every-ms         10000
    :jobs-initial-delay-ms 1000})
 
-(defn- classify-scopes
-  [scope-list configuration]
-  ; TODO
-  {})
-  ;(let [essentials-url (config/require-config configuration :essentials-url)]
-  ;  (-> (group-by #(if (:is_resource_owner_scope {:is_resource_owner_scope true :foo %}) :resource-owner-scopes :application-user-scopes) [{:resource_type_id "sales-order" :scope_id "read"} {:resource_type_id "sales-order" :scope_id "write"}])
-  ;      (update-in [:resource-owner-scopes] #(mapcat (fn [scope] (map (fn [resource_owner] {:realm resource_owner :scopes [(str (:resource_type_id scope) "." (:scope_id scope))]}) (:resource_owners {:resource_owners ["customers" "employees"]}))) %))))
+(defn owners [{:keys [resource_type_id]} essentials-url]
+  (:resource_owners (scopes/get-resource-type essentials-url resource_type_id)))
+
+(defn owner-scope? [{:keys [resource_type_id scope_id]} essentials-url]
+  (:is_resource_owner_scope (scopes/get-scope essentials-url resource_type_id scope_id)))
+
+(defn group-types [scopes configuration]
+  (let [essentials-url (config/require-config configuration :essentials-url)]
+    (->> scopes
+         (map #(assoc % :id (str (:resource_type_id %) "." (:scope_id %))))
+         (map #(assoc % :scope-type (if (owner-scope? % essentials-url) :owner-scope :application-scope)))
+         (map (fn [scope]
+                #(if (= :owner-scope (:scope-type scope))
+                  (assoc scope :owners (owners scope essentials-url))
+                  scope)))
+         (group-by :scope-type))))
+
+(defn add-scope [result scope-id [owner & owners]]
+  (if owner
+    (let [result (update-in result [owner] conj scope-id)]
+      (recur result scope-id owners))
+    result))
+
+(defn map-owner-scopes [scopes]
+  (->> scopes
+       (reduce
+         (fn [result scope]
+           (add-scope result (:id scope) (:owners scope)))
+         {})
+       (map (fn [[owner scopes]]
+              {:realm owner
+               :sopes scopes}))))
+
+(defn map-application-scopes [scopes]
+  (map :id scopes))
+
+(defn map-scopes [scopes configuration]
+  (-> scopes
+      (group-types configuration)
+      (update-in [:owner-scope] map-owner-scopes)
+      (update-in [:application-scope] map-application-scopes)))
 
 (defn sync-user
   "If neccessary, creates or deletes service users."
@@ -46,15 +79,15 @@
       (if (time/after? (:last_modified app) (:last_synced app))
         (do
           (log/info "Synchronizing app %s..." app)
-          (let [scopes (classify-scopes (:scopes app) configuration)]
+          (let [scopes (map-scopes (:scopes app) configuration)]
             (services/create-or-update-user service-user-url
                                             username
                                             {:id            username
                                              :name          (:name kio-app)
                                              :owner         team-id
                                              :client_config {:redirect_urls [(:redirect_url app)]
-                                                             :scopes        (:resource-owner-scopes scopes)}
-                                             :user_config   {:scopes (:application-user-scopes scopes)}}))
+                                                             :scopes        (:owner-scope scopes)}
+                                             :user_config   {:scopes (:application-scope scopes)}}))
           (log/info "Updating last_synced time of application %s..." app-id)
           (storage/update-status storage-url app-id {:last_synced (time/now)})
           (log/info "Successfully synced application %s" app-id))
