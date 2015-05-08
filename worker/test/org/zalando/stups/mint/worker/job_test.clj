@@ -15,6 +15,9 @@
    :service-user-url "https://localhost"
    :prefix           "stups_"})
 
+(def test-tokens
+  {})
+
 (defmacro always
   "Returns a function that accepts arbitrary parameters and always executes the same body. Similar to 'constantly' but
    with adhoc evaluation."
@@ -43,18 +46,18 @@
 (deftest resiliency-nothing
   ; no apps, nothing to do
   (with-redefs [storage/list-apps (always [])]
-    (j/run-sync test-config)))
+    (j/run-sync test-config test-tokens)))
 
 (deftest resiliency-list-unavailable
   ; error on getting list -> no bubble up, so job restarts in a imnute
   (with-redefs [storage/list-apps (always (throw (ex-info "this should be catched" {})))]
-    (j/run-sync test-config)))
+    (j/run-sync test-config test-tokens)))
 
 (deftest resiliency-individual-app
   ; error on processing on app-> no bubble up, so job restarts in a minute
   (with-redefs [storage/list-apps (always [{:id "foo"}])
                 storage/get-app (always (throw (ex-info "this should be catched" {})))]
-    (j/run-sync test-config)))
+    (j/run-sync test-config test-tokens)))
 
 
 ;; synchronisation of apps
@@ -66,7 +69,7 @@
     (with-redefs [storage/list-apps (always [{:id "foo"}, {:id "bar"}])
                   j/sync-app (track calls :sync-app)]
 
-      (j/run-sync test-config)
+      (j/run-sync test-config test-tokens)
       (is (= #{[:sync-app "foo"] [:sync-app "bar"]} @calls)))))
 
 (def foo-app {:id            "foo"
@@ -88,7 +91,7 @@
                   j/sync-client (track calls :sync-client [0])
                   storage/get-app (lookup {"foo" foo-app})
                   apps/get-app (lookup {"foo" foo-kio-app})]
-      (j/sync-app test-config "foo")
+      (j/sync-app test-config "foo" test-tokens)
       (is (= #{[:sync-user [foo-app foo-kio-app test-config]]
                [:sync-password [foo-app foo-kio-app test-config]]
                [:sync-client [foo-app]]} @calls)))))
@@ -100,7 +103,7 @@
     (with-redefs [services/list-users (always #{"stups_foo"})
                   services/delete-user (track calls :delete-service [1])]
 
-      (j/sync-user foo-app (assoc foo-kio-app :active false) test-config)
+      (j/sync-user foo-app (assoc foo-kio-app :active false) test-config test-tokens)
       (is (= #{[:delete-service ["stups_foo"]]} @calls)))))
 
 (deftest sync-delete-inactive-apps-ignore
@@ -110,7 +113,7 @@
     (with-redefs [services/list-users (always #{})
                   services/delete-user (track calls :delete-service)]
 
-      (j/sync-user foo-app (assoc foo-kio-app :active false) test-config)
+      (j/sync-user foo-app (assoc foo-kio-app :active false) test-config test-tokens)
       (is (= #{} @calls)))))
 
 (deftest sync-skip-unmodified-user
@@ -119,7 +122,7 @@
     (with-redefs [services/list-users (always #{"stups_foo"})
                   services/delete-user (track calls :delete-service)
                   services/create-or-update-user (track calls :create-or-update-user [])]
-      (j/sync-user (assoc foo-app :last_modified (time/date-time 2015 04 24 12 00)) foo-kio-app test-config)
+      (j/sync-user (assoc foo-app :last_modified (time/date-time 2015 04 24 12 00)) foo-kio-app test-config test-tokens)
       (is (= #{} @calls)))))
 
 (deftest create-user
@@ -127,7 +130,7 @@
   (let [calls (atom #{})]
     (with-redefs [services/create-or-update-user (track calls :create-or-update-user [1 2])
                   storage/update-status (track calls :update-status [1])]
-      (j/sync-user (assoc foo-app :last_synced nil) foo-kio-app test-config)
+      (j/sync-user (assoc foo-app :last_synced nil) foo-kio-app test-config test-tokens)
       (is (= #{[:create-or-update-user ["stups_foo"
                                         {:client_config {:redirect_urls ["http://localhost/foo"]
                                                          :scopes        []}
@@ -142,7 +145,7 @@
   (let [calls (atom #{})]
     (with-redefs [services/create-or-update-user (track calls :create-or-update-user [1 2])
                   storage/update-status (track calls :update-status [1 2])]
-      (j/sync-user foo-app foo-kio-app test-config)
+      (j/sync-user foo-app foo-kio-app test-config test-tokens)
       (is (= (count @calls) 2))
       (is (some #(= % [:create-or-update-user ["stups_foo"
                                                {:client_config {:redirect_urls ["http://localhost/foo"]
