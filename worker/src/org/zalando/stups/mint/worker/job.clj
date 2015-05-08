@@ -20,6 +20,10 @@
   [string]
   (when string (f/parse (f/formatters :date-time) string)))
 
+(defn- format-date-time
+  [date-time]
+  (f/unparse (f/formatters :date-time) date-time))
+
 (defn owners [{:keys [resource_type_id]} essentials-url tokens]
   (:resource_owners (scopes/get-resource-type essentials-url resource_type_id tokens)))
 
@@ -100,13 +104,13 @@
             (if (:client_id app)
               (do
                 (log/info "Updating last_synced time of application %s..." app-id)
-                (storage/update-status storage-url app-id {:last_synced (time/now)} tokens))
+                (storage/update-status storage-url app-id {:last_synced (format-date-time (time/now))} tokens))
               (do
                 (log/info "Saving new client for app %s..." app-id)
                 (doseq [bucket-name bucket-names]
                   (s3/save-client bucket-name app-id new-client-id nil))
                 (log/info "Updating last synced time and client_id for app %s" app-id)
-                (storage/update-status storage-url app-id {:last_synced (time/now) :client_id new-client-id} tokens))))
+                (storage/update-status storage-url app-id {:last_synced (format-date-time (time/now)) :client_id new-client-id} tokens))))
           (log/info "Successfully synced application %s" app-id))
 
         ; else
