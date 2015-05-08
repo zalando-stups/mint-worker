@@ -1,7 +1,11 @@
 (ns org.zalando.stups.mint.worker.external.apps
-  (:require [org.zalando.stups.mint.worker.util :as util]))
+  (:require [org.zalando.stups.mint.worker.util :refer [conpath]]
+            [clj-http.client :as client]
+            [org.zalando.stups.friboo.system.oauth2 :as oauth2]))
 
 (defn get-app
   "GET /apps/{applicationId}"
-  [kio-url app-id]
-  (util/fetch kio-url "/apps/" app-id))
+  [kio-url app-id tokens]
+  (client/get (conpath kio-url "/apps/" app-id)
+              {:oauth-token (oauth2/access-token :kio-ro-api tokens)
+               :as          :json}))
