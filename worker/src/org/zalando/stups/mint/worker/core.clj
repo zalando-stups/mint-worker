@@ -26,7 +26,7 @@
   "Initializes and starts the whole system."
   [default-configuration]
   (let [configuration (config/load-configuration
-                        [:jobs]
+                        [:jobs :credentials :oauth2]
                         [job/default-configuration
                          default-configuration])
 
@@ -40,7 +40,7 @@
                                                                               :essentials-ro-api   ["uid"]}})
                            [:credentials])
                  :jobs (using (job/map->Jobs {:configuration (:jobs configuration)})
-                              [:tokens])]
+                              [:tokens]))]
 
     (system/run configuration system)))
 

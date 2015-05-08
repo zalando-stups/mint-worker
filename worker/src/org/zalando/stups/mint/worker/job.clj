@@ -9,12 +9,16 @@
             [org.zalando.stups.mint.worker.external.s3 :as s3]
             [org.zalando.stups.mint.worker.external.scopes :as scopes]
             [clj-time.core :as time]
-            [clj-time.coerce :refer [from-date to-date]]))
+            [clj-time.format :as f]))
 
 (def default-configuration
   {:jobs-cpu-count        1
    :jobs-every-ms         10000
    :jobs-initial-delay-ms 1000})
+
+(defn- parse-date-time
+  [string]
+  (when string (f/parse (f/formatters :date-time) string)))
 
 (defn owners [{:keys [resource_type_id]} essentials-url tokens]
   (:resource_owners (scopes/get-resource-type essentials-url resource_type_id tokens)))
@@ -62,7 +66,7 @@
   "If neccessary, creates or deletes service users."
   [app kio-app configuration tokens]
   (let [storage-url (config/require-config configuration :storage-url)
-        service-user-url (config/require-config configuration :storage-url)
+        service-user-url (config/require-config configuration :service-user-url)
         app-id (:id app)
         team-id (:team_id kio-app)
         username (:username app)
@@ -77,7 +81,8 @@
           (log/debug "App %s is inactive and has no user." app-id)))
 
       ; active app, check for last sync
-      (if (time/after? (:last_modified app) (:last_synced app))
+      (if (or (nil? (:last_synced app))
+              (time/after? (parse-date-time (:last_modified app)) (parse-date-time (:last_synced app))))
         (do
           (log/info "Synchronizing app %s..." app)
           (let [scopes (map-scopes (:scopes app) configuration tokens)
@@ -92,16 +97,16 @@
                                                           :user_config   {:scopes (:application-scope scopes)}}
                                                          tokens)
                 new-client-id (:client_id response)]        ; TODO is this correct?
-            (if (:client_id app))
-            (do
-              (log/info "Updating last_synced time of application %s..." app-id)
-              (storage/update-status storage-url app-id {:last_synced (time/now)} tokens))
-            (do
-              (log/info "Saving new client for app %s..." app-id)
-              (doseq [bucket-name bucket-names]
-                (s3/save-client bucket-name app-id new-client-id nil))
-              (log/info "Updating last synced time and client_id for app %s" app-id)
-              (storage/update-status storage-url app-id {:last_synced (time/now) :client_id new-client-id} tokens)))
+            (if (:client_id app)
+              (do
+                (log/info "Updating last_synced time of application %s..." app-id)
+                (storage/update-status storage-url app-id {:last_synced (time/now)} tokens))
+              (do
+                (log/info "Saving new client for app %s..." app-id)
+                (doseq [bucket-name bucket-names]
+                  (s3/save-client bucket-name app-id new-client-id nil))
+                (log/info "Updating last synced time and client_id for app %s" app-id)
+                (storage/update-status storage-url app-id {:last_synced (time/now) :client_id new-client-id} tokens))))
           (log/info "Successfully synced application %s" app-id))
 
         ; else
@@ -116,7 +121,7 @@
         app-id (:id app)]
     (if (or (nil? (:last_password_rotation app))
             (time/after? (time/now)
-                         (-> (:last_password_rotation app) (time/plus (time/hours 2)))))
+                         (-> (parse-date-time (:last_password_rotation app)) (time/plus (time/hours 2)))))
       (do
         (log/info "Acquiring new password for %s..." username)
         (let [generate-pw-response (services/generate-new-password service-user-url username tokens)
@@ -146,7 +151,7 @@
         username (:username app)
         bucket-names (:s3_buckets app)]
     (if (or (nil? (:last_client_rotation app))
-            (time/after? (time/now) (time/plus (from-date (:last_client_rotation app)) (time/months 1))))
+            (time/after? (time/now) (time/plus (parse-date-time (:last_client_rotation app)) (time/months 1))))
       (do
         (log/debug "Acquiring a new client for app %s..." app-id)
         (let [generate-client-response (services/generate-new-client service-user-url username tokens)
@@ -169,19 +174,22 @@
 (defn sync-app
   "Syncs the application with the given app-id."
   [configuration app-id tokens]
+  (log/debug "Start syncing app %s ..." app-id)
   (let [storage-url (config/require-config configuration :storage-url)
-        kio-url (config/require-config configuration :storage-url)
+        kio-url (config/require-config configuration :kio-url)
         app (storage/get-app storage-url app-id tokens)
         kio-app (apps/get-app kio-url app-id tokens)]
     ; TODO handle 404 from kio for app
+    (log/debug "App has mint configuration %s" app)
+    (log/debug "App has kio configuration %s" kio-app)
     (sync-user app kio-app configuration tokens)
     (if (:active kio-app)
       (if (:is_client_confidential app)
         (do
           (sync-password app configuration tokens)
           (sync-client app configuration tokens))
-        (log/debug "Skip password and client rotation for public client %" app-id))
-      (log/debug "Skip password and client rotation for inactive app %" app-id))))
+        (log/debug "Skip password and client rotation for public client %s" app-id))
+      (log/debug "Skip password and client rotation for inactive app %s" app-id))))
 
 (defn run-sync
   "Creates and deletes applications, rotates and distributes their credentials."
@@ -190,6 +198,7 @@
     (log/info "Starting new synchronisation run with %s..." configuration)
     (try
       (let [apps (storage/list-apps storage-url tokens)]
+        (log/debug "Found apps: %s ..." apps)
         (doseq [app apps]
           (try
             (sync-app configuration (:id app) tokens)
@@ -204,3 +213,5 @@
   (let [{:keys [every-ms initial-delay-ms]} configuration]
 
     (every every-ms #(run-sync configuration tokens) pool :initial-delay initial-delay-ms :desc "synchronisation")))
+
+

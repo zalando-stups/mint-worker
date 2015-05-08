@@ -6,6 +6,6 @@
 (defn get-app
   "GET /apps/{applicationId}"
   [kio-url app-id tokens]
-  (client/get (conpath kio-url "/apps/" app-id)
-              {:oauth-token (oauth2/access-token :kio-ro-api tokens)
-               :as          :json}))
+  (:body (client/get (conpath kio-url "/apps/" app-id)
+                     {:oauth-token (oauth2/access-token :kio-ro-api tokens)
+                      :as          :json})))

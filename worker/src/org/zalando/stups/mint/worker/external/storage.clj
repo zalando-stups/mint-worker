@@ -8,22 +8,23 @@
 
    [{'id': '123'}, {'id': '456'}]"
   [storage-url tokens]
-  (client/get (conpath storage-url "/apps")
-              {:oauth-token (oauth2/access-token :mint-storage-rw-api tokens)
-               :as          :json}))
+  (:body (client/get (conpath storage-url "/apps")
+                     {:oauth-token (oauth2/access-token :mint-storage-rw-api tokens)
+                      :as          :json})))
 
 (defn get-app
   "GET /apps/{applicationId}"
   [storage-url app-id tokens]
-  (client/get (conpath storage-url "/apps/" app-id)
-              {:oauth-token (oauth2/access-token :mint-storage-rw-api tokens)
-               :as          :json}))
+  (:body (client/get (conpath storage-url "/apps/" app-id)
+                     {:oauth-token (oauth2/access-token :mint-storage-rw-api tokens)
+                      :as          :json})))
 
 (defn update-status
   "PATCH /apps/{applicationId}"
   [storage-url app-id body tokens]
   (client/patch (conpath storage-url "/apps/" app-id)
                 {:oauth-token  (oauth2/access-token :mint-storage-rw-api tokens)
-                 :content-type :application/json
+                 :content-type :json
                  :form-params  body
-                 :as           :json}))
+                 :as           :json})
+  nil)
