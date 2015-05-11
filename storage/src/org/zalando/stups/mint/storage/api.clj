@@ -101,6 +101,7 @@
   (if-let [app (load-application application_id db)]
     (let [app (select-keys app [:id
                                 :username
+                                :client_id
                                 :last_password_rotation
                                 :last_client_rotation
                                 :last_modified

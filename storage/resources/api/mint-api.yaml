@@ -110,6 +110,11 @@ paths:
               username:
                 type: string
                 description: Name of the service (robot) user
+                example: yourturn
+              client_id:
+                type: string
+                description: ID of the current OAuth 2.0 client configuration
+                example: yourturn-12345
               last_password_rotation:
                 type: string
                 format: date-time

@@ -31,6 +31,7 @@
   (:body (client/post (conpath service-user-url "/services/" username "/password")
                       {:oauth-token  (oauth2/access-token :service-user-rw-api tokens)
                        :content-type :json
+                       :form-params  {}
                        :as           :json})))
 
 (defn commit-password
@@ -42,16 +43,18 @@
                       :as           :json})))
 
 (defn generate-new-client
-  [service-user-url username tokens]
+  [service-user-url username client-id tokens]
   (:body (client/post (conpath service-user-url "/services/" username "/client")
                       {:oauth-token  (oauth2/access-token :service-user-rw-api tokens)
                        :content-type :json
+                       :form-params  {:id username
+                                      :client_id client-id}
                        :as           :json})))
 
 (defn commit-client
-  [service-user-url username client-id tokens]
-  (:body (client/put (conpath service-user-url "/services/" username "/password")
+  [service-user-url username transaction-id tokens]
+  (:body (client/put (conpath service-user-url "/services/" username "/client")
                      {:oauth-token  (oauth2/access-token :service-user-rw-api tokens)
                       :content-type :json
-                      :form-params  {:id username :client:id client-id}
+                      :form-params  {:txid transaction-id}
                       :as           :json})))
