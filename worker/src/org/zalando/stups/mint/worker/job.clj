@@ -90,28 +90,34 @@
         (do
           (log/info "Synchronizing app %s..." app)
           (let [scopes (map-scopes (:scopes app) configuration tokens)
+                scopes (update-in scopes [:owner-scope] conj
+                                  {:realm "services" ; TODO hardcoded assumption of services realm
+                                   :scopes (conj (:aplication-scope scopes) "uid")})
                 response (services/create-or-update-user service-user-url
                                                          username
                                                          {:id            username
                                                           :name          (:name kio-app)
                                                           :owner         team-id
-                                                          :client_config {:redirect_urls [(:redirect_url app)]
+                                                          :client_config {:redirect_urls (if (empty? (:redirect_url app))
+                                                                                           []
+                                                                                           [(:redirect_url app)])
                                                                           :scopes        (:owner-scope scopes)
-                                                                          :confidential  (:is_client_confidential app)} ; TODO is this key correct?
+                                                                          :confidential  (:is_client_confidential app)}
                                                           :user_config   {:scopes (:application-scope scopes)}}
                                                          tokens)
-                new-client-id (:client_id response)]        ; TODO is this correct?
-            (if (:client_id app)
+                new-client-id (:client_id response)] ; TODO is this correct?
+            (if (or (:last_client_rotation app) (:is_client_confidential app))
+              ; client rotation will be done later
               (do
-                (log/info "Updating last_synced time of application %s..." app-id)
+                (log/info "Updating last_synced time of app %s..." app-id)
                 (storage/update-status storage-url app-id {:last_synced (format-date-time (time/now))} tokens))
               (do
-                (log/info "Saving new client for app %s..." app-id)
+                (log/info "Saving client ID %s for app %s..." app-id)
                 (doseq [bucket-name bucket-names]
                   (s3/save-client bucket-name app-id new-client-id nil))
                 (log/info "Updating last synced time and client_id for app %s" app-id)
                 (storage/update-status storage-url app-id {:last_synced (format-date-time (time/now)) :client_id new-client-id} tokens))))
-          (log/info "Successfully synced application %s" app-id))
+          (log/info "Successfully synced app %s" app-id))
 
         ; else
         (log/debug "App %s has not been modified since last sync. Skip sync." app-id)))))
@@ -125,19 +131,27 @@
         app-id (:id app)]
     (if (or (nil? (:last_password_rotation app))
             (time/after? (time/now)
-                         (-> (parse-date-time (:last_password_rotation app)) (time/plus (time/hours 2)))))
+                         (-> (parse-date-time (:last_password_rotation app)) (time/plus (time/minutes 15)))))
       (do
+        ; Step 1: generate password
         (log/info "Acquiring new password for %s..." username)
-        (let [generate-pw-response (services/generate-new-password service-user-url username tokens)
-              password (:password generate-pw-response)
-              txid (:txid generate-pw-response)
+        (let [{:keys [password txid]} (services/generate-new-password service-user-url username tokens)
               bucket-names (:s3_buckets app)]
           (try
             (do
+              ; Step 2: distribute it
               (log/info "Saving the new password for %s to S3 buckets: %s..." app-id bucket-names)
               (doseq [bucket-name bucket-names]
                 (s3/save-user bucket-name app-id username password))
+
+              ; Step 3: if successful distributed, commit it
+              (log/debug "Committing new password for app %s with transaction %s..." app-id txid)
               (services/commit-password service-user-url username txid tokens)
+
+              ; Step 4: store last rotation time (now)
+              (log/debug "Saving last password rotation status for app %s..." app-id)
+              (storage/update-status storage-url app-id {:last_password_rotation (format-date-time (time/now))} tokens)
+
               (log/info "Successfully rotated password for app %s" app-id))
             (catch Exception e
               (log/error e "Could not rotate password for app %s" app-id)
@@ -157,16 +171,26 @@
     (if (or (nil? (:last_client_rotation app))
             (time/after? (time/now) (time/plus (parse-date-time (:last_client_rotation app)) (time/months 1))))
       (do
-        (log/debug "Acquiring a new client for app %s..." app-id)
+        ; Step 1: generate password
+        (log/info "Acquiring a new client for app %s..." app-id)
         (let [generate-client-response (services/generate-new-client service-user-url username tokens)
               client-id (:client_id generate-client-response)
               client-secret (:client_secret generate-client-response)]
           (try
             (do
+              ; Step 2: distribute it
               (log/info "Saving the new client for %s to S3 buckets: %s..." app-id bucket-names)
               (doseq [bucket-name bucket-names]
                 (s3/save-client bucket-name app-id client-id client-secret))
+
+              ; Step 3: if successful distributed, commit it
+              (log/debug "Committing new secret for app %s..." app-id)
               (services/commit-client service-user-url username client-id tokens)
+
+              ; Step 4: store last rotation time (now)
+              (log/debug "Saving last client rotation status for app %s..." app-id)
+              (storage/update-status storage-url app-id {:last_client_rotation (format-date-time (time/now))} tokens)
+
               (log/info "Successfully rotated client for app %s" app-id))
             (catch Exception e
               (log/error e "Could not rotate client for app %s" app-id)
@@ -178,7 +202,8 @@
 (defn sync-app
   "Syncs the application with the given app-id."
   [configuration app-id tokens]
-  (log/debug "Start syncing app %s ..." app-id)
+  (log/debug "============================== %s ==============================" app-id)
+  (log/debug "Start syncing app %s..." app-id)
   (let [storage-url (config/require-config configuration :storage-url)
         kio-url (config/require-config configuration :kio-url)
         app (storage/get-app storage-url app-id tokens)
@@ -189,17 +214,19 @@
     (sync-user app kio-app configuration tokens)
     (if (:active kio-app)
       (if (:is_client_confidential app)
+        ; TODO if client rotation is null (never done), do it once
         (do
           (sync-password app configuration tokens)
           (sync-client app configuration tokens))
-        (log/debug "Skip password and client rotation for public client %s" app-id))
-      (log/debug "Skip password and client rotation for inactive app %s" app-id))))
+        (log/debug "Skip password and client rotation for non-confidential client %s" app-id))
+      (log/debug "Skip password and client rotation for inactive app %s" app-id)))
+  (log/debug "Synced app %s." app-id))
 
 (defn run-sync
   "Creates and deletes applications, rotates and distributes their credentials."
   [configuration tokens]
   (let [storage-url (config/require-config configuration :storage-url)]
-    (log/info "Starting new synchronisation run with %s..." configuration)
+    (log/debug "Starting new synchronisation run with %s..." configuration)
     (try
       (let [apps (storage/list-apps storage-url tokens)]
         (log/debug "Found apps: %s ..." apps)
@@ -207,7 +234,7 @@
           (try
             (sync-app configuration (:id app) tokens)
             (catch Exception e
-              (log/error e "Could not synchronize app %s because %s." app (str e))))))
+              (log/warn "Could not synchronize app %s because %s." (:id app) (str e))))))
       (catch Exception e
         (log/error e "Could not synchronize apps because %s." (str e))))))
 
