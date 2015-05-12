@@ -75,6 +75,7 @@
         team-id (:team_id kio-app)
         username (:username app)
         bucket-names (:s3_buckets app)]
+
     (if-not (:active kio-app)
       ; inactive app, check if deletion is required
       (let [users (services/list-users service-user-url tokens)]
@@ -82,7 +83,8 @@
           (do
             (log/info "App %s is inactive; deleting user %s..." app-id username)
             (services/delete-user service-user-url username tokens))
-          (log/debug "App %s is inactive and has no user." app-id)))
+          (log/debug "App %s is inactive and has no user." app-id))
+        app)
 
       ; active app, check for last sync
       (if (or (nil? (:last_synced app))
@@ -105,22 +107,23 @@
                                                                           :confidential  (:is_client_confidential app)}
                                                           :user_config   {:scopes (:application-scope scopes)}}
                                                          tokens)
-                new-client-id (:client_id response)]        ; TODO is this correct?
-            (if (or (:is_client_confidential app) (:client_id app))
-              (do
-                ; client rotation will be done later
-                (log/debug "Updating last_synced time of app %s..." app-id)
-                (storage/update-status storage-url app-id {:last_synced (format-date-time (time/now))} tokens))
-              (do
-                (log/info "Saving non-confidential client ID %s for app %s..." new-client-id app-id)
-                (doseq [bucket-name bucket-names]
-                  (s3/save-client bucket-name app-id new-client-id nil))
-                (log/debug "Updating last synced time and client_id for app %s..." app-id)
-                (storage/update-status storage-url app-id {:last_synced (format-date-time (time/now)) :client_id new-client-id} tokens))))
-          (log/info "Successfully synced app %s" app-id))
+                new-client-id (:client_id response)]
+
+            (when (and (not (:is_client_confidential app)) (nil? (:client_id app)))
+              (log/info "Saving non-confidential client ID %s for app %s..." new-client-id app-id)
+              (doseq [bucket-name bucket-names]
+                (s3/save-client bucket-name app-id new-client-id nil)))
+
+            (log/debug "Updating last synced time and client_id for app %s..." app-id)
+            (storage/update-status storage-url app-id {:last_synced (format-date-time (time/now)) :client_id new-client-id} tokens)
+
+            (log/info "Successfully synced app %s" app-id)
+            (assoc app :client_id new-client-id)))
 
         ; else
-        (log/debug "App %s has not been modified since last sync. Skip sync." app-id)))))
+        (do
+          (log/debug "App %s has not been modified since last sync. Skip sync." app-id)
+          app)))))
 
 (defn sync-password
   "If neccessary, creates and syncs a new password for the given app."
@@ -184,7 +187,8 @@
 
           ; Step 4: store last rotation time (now)
           (log/debug "Saving last client rotation status for app %s..." app-id)
-          (storage/update-status storage-url app-id {:last_client_rotation (format-date-time (time/now))} tokens)
+          (storage/update-status storage-url app-id {:last_client_rotation (format-date-time (time/now))
+                                                     :client_id            client-id} tokens)
 
           (log/info "Successfully rotated client for app %s" app-id)))
 
@@ -203,15 +207,15 @@
     ; TODO handle 404 from kio for app
     (log/debug "App has mint configuration %s" app)
     (log/debug "App has kio configuration %s" kio-app)
-    (sync-user app kio-app configuration tokens)
-    (if (:active kio-app)
-      (do
-        (sync-password app configuration tokens)
-        (if (:is_client_confidential app)
-          (sync-client app configuration tokens)
-          (log/debug "Skipping client rotation for non-confidential client %s" app-id)))
-      (log/debug "Skipping password and client rotation for inactive app %s" app-id)))
-  (log/debug "Synced app %s." app-id))
+    (let [app (sync-user app kio-app configuration tokens)]
+      (if (:active kio-app)
+        (do
+          (sync-password app configuration tokens)
+          (if (:is_client_confidential app)
+            (sync-client app configuration tokens)
+            (log/debug "Skipping client rotation for non-confidential client %s" app-id)))
+        (log/debug "Skipping password and client rotation for inactive app %s" app-id))
+      (log/debug "Synced app %s." app-id))))
 
 (defn run-sync
   "Creates and deletes applications, rotates and distributes their credentials."
