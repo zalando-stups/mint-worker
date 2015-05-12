@@ -14,7 +14,8 @@
   :uberjar-name "mint-worker.jar"
 
   :plugins [[io.sarnowski/lein-docker "1.1.0"]
-            [lein-cloverage "1.0.3"]]
+            [lein-cloverage "1.0.3"]
+            [org.zalando.stups/lein-scm-source "0.1.0"]]
 
   :docker {:image-name "stups/mint-worker"}
 
@@ -24,6 +25,7 @@
                   ["vcs" "tag"]
                   ["clean"]
                   ["uberjar"]
+                  ["scm-source"]
                   ["docker" "build"]
                   ["docker" "push"]
                   ["change" "version" "leiningen.release/bump-version"]
