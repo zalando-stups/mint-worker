@@ -16,7 +16,7 @@
   :uberjar-name "mint-storage.jar"
 
   :plugins [[io.sarnowski/lein-docker "1.1.0"]
-            [org.zalando.stups/lein-scm-source "0.1.0"]]
+            [org.zalando.stups/lein-scm-source "0.2.0"]]
 
   :docker {:image-name "stups/mint-storage"}
 

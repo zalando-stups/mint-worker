@@ -9,4 +9,4 @@ ENV HTTP_PORT=8080
 
 CMD java $(java-dynamic-memory-opts) -jar /mint-storage.jar
 
-ADD /scm-source.json /scm-source.json
+ADD target/scm-source.json /scm-source.json

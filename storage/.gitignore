@@ -2,9 +2,6 @@
 /user.json
 /client.json
 
-# Docker build
-/scm-source.json
-
 # Leiningen
 pom.xml
 pom.xml.asc
