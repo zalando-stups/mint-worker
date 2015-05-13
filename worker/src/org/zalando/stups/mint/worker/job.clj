@@ -36,7 +36,7 @@
          (map #(assoc % :id (str (:resource_type_id %) "." (:scope_id %))))
          (map #(assoc % :scope-type (if (owner-scope? % essentials-url tokens) :owner-scope :application-scope)))
          (map (fn [scope]
-                #(if (= :owner-scope (:scope-type scope))
+                (if (= :owner-scope (:scope-type scope))
                   (assoc scope :owners (owners scope essentials-url tokens))
                   scope)))
          (group-by :scope-type))))
@@ -93,8 +93,8 @@
           (log/info "Synchronizing app %s..." app)
           (let [scopes (map-scopes (:scopes app) configuration tokens)
                 scopes (update-in scopes [:owner-scope] conj
-                                  {:realm  "services"       ; TODO hardcoded assumption of services realm
-                                   :scopes (conj (:aplication-scope scopes) "uid")})
+                                  {:realm  "services"       ; TODO hardcoded assumption of services realm and uid and no other services-owned scopes!! fix asap
+                                   :scopes (conj (:application-scope scopes) "uid")})
                 response (services/create-or-update-user service-user-url
                                                          username
                                                          {:id            username
