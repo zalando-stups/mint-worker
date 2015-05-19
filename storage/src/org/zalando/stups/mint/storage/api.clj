@@ -17,6 +17,7 @@
             [org.zalando.stups.friboo.log :as log]
             [org.zalando.stups.friboo.ring :refer :all]
             [org.zalando.stups.friboo.config :refer [require-config]]
+            [org.zalando.stups.friboo.user :refer [require-internal-team]]
             [org.zalando.stups.friboo.system.http :refer [def-http-component]]
             [org.zalando.stups.mint.storage.external.apps :refer [get-app]]
             [org.zalando.stups.mint.storage.external.scopes :refer [get-scope]]
@@ -119,81 +120,89 @@
       (content-type-json (response app)))
     (not-found nil)))
 
-(defn- check-app-exists
+(defn- require-app
   "Throws an error if app does not exist in Kio"
   [application-id kio-url access-token]
-  (when-not (get-app kio-url application-id access-token)
+  (or
+    (get-app kio-url application-id access-token)
     (throw-error
       400
       (str "Application '" application-id "' does not exist in Kio")
       {:invalid_application_id application-id})))
 
-(defn- check-scopes-exist
+(defn- require-scope
+  [{:keys [resource_type_id scope_id]} essentials-url access-token]
+  (merge {:resource_type_id resource_type_id :scope_id scope_id})
+  (or
+    (get-scope resource_type_id scope_id essentials-url access-token)
+    (throw-error
+      400
+      (str "Scope " resource_type_id "." scope_id " does not exist in essentials")
+      {:resource_type_id resource_type_id :scope_id scope_id})))
+
+(defn- require-scopes
   "Throws an error if any of the given scopes does not exist in essentials"
   [scopes essentials-url access-token]
-  (let [invalid-scopes (remove #(get-scope (:resource_type_id %) (:scope_id %) essentials-url access-token) scopes)]
-    (when-not (empty? invalid-scopes)
-      (throw-error
-        400
-        "Some scopes do not exist in essentials"
-        {:invalid_scopes invalid-scopes}))))
+  (map #(require-scope % essentials-url access-token) scopes))
 
 (defn create-or-update-application
   "Creates or updates an appliction. If no s3 buckets are given, deletes the application."
-  [{:keys [application_id application]} {:keys [configuration tokeninfo]} db mint-config]
+  [{:keys [application_id application]} {:keys [configuration tokeninfo] :as request} db mint-config]
   (log/debug "Creating or updating application %s with %s..." application_id application)
-  (if (empty? (:s3_buckets application))
-    (do
-      (sql/delete-application! {:application_id application_id} {:connection db})
-      (log/info "Deleted application %s because no s3 buckets were given." application_id))
-    (let [new-scopes (apply sorted-set-by scopes-compared (:scopes application))]
-      (if tokeninfo
-        (let [access-token (get tokeninfo "access_token")
-              kio-url (require-config configuration :kio-url)
-              essentials-url (require-config configuration :essentials-url)]
-          (check-app-exists application_id kio-url access-token)
-          (check-scopes-exist new-scopes essentials-url access-token))
-        (log/warn "Could not verify if app exists in Kio, because security was disabled (no HTTP_TOKENINFO_URL set)"))
-      (jdbc/with-db-transaction
-        [connection db]
-        ; check app base information
-        (let [db-app (load-application application_id db)
-              new-s3-buckets (apply sorted-set (:s3_buckets application))
-              prefix (:username-prefix mint-config)
-              username (if prefix (str prefix application_id) application_id)]
-          ; sync app
-          (if db-app
-            ; check for update (did anything change?)
-            (when-not (and (= (:redirect_url db-app) (:redirect_url application))
-                           (= (:is_client_confidential db-app) (:is_client_confidential application))
-                           (= (:s3_buckets db-app) new-s3-buckets)
-                           (= (:scopes db-app) new-scopes))
-              (sql/update-application! {:application_id         application_id
+  (let [new-scopes (apply sorted-set-by scopes-compared (:scopes application))]
+    (if tokeninfo
+      (let [access-token (get tokeninfo "access_token")
+            kio-url (require-config configuration :kio-url)
+            essentials-url (require-config configuration :essentials-url)
+            app (require-app application_id kio-url access-token)]
+        (require-internal-team (:team_id app) request)
+        (require-scopes new-scopes essentials-url access-token))
+      (log/warn "Could not perform further validation, because security was disabled (no HTTP_TOKENINFO_URL set)"))
+    (if (empty? (:s3_buckets application))
+      (do
+        (sql/delete-application! {:application_id application_id} {:connection db})
+        (log/info "Deleted application %s because no s3 buckets were given." application_id))
+      (do
+        (jdbc/with-db-transaction
+          [connection db]
+          ; check app base information
+          (let [db-app (load-application application_id db)
+                new-s3-buckets (apply sorted-set (:s3_buckets application))
+                prefix (:username-prefix mint-config)
+                username (if prefix (str prefix application_id) application_id)]
+            ; sync app
+            (if db-app
+              ; check for update (did anything change?)
+              (when-not (and (= (:redirect_url db-app) (:redirect_url application))
+                             (= (:is_client_confidential db-app) (:is_client_confidential application))
+                             (= (:s3_buckets db-app) new-s3-buckets)
+                             (= (:scopes db-app) new-scopes))
+                (sql/update-application! {:application_id         application_id
+                                          :redirect_url           (:redirect_url application)
+                                          :is_client_confidential (:is_client_confidential application)
+                                          :s3_buckets             (str/join "," new-s3-buckets)}
+                                         {:connection connection}))
+              ; create new app
+              (sql/create-application! {:application_id         application_id
                                         :redirect_url           (:redirect_url application)
                                         :is_client_confidential (:is_client_confidential application)
-                                        :s3_buckets             (str/join "," new-s3-buckets)}
+                                        :s3_buckets             (str/join "," new-s3-buckets)
+                                        :username               username}
                                        {:connection connection}))
-            ; create new app
-            (sql/create-application! {:application_id         application_id
-                                      :redirect_url           (:redirect_url application)
-                                      :is_client_confidential (:is_client_confidential application)
-                                      :s3_buckets             (str/join "," new-s3-buckets)
-                                      :username               username}
-                                     {:connection connection}))
-          ; sync scopes
-          (let [scopes-to-be-created (set/difference new-scopes (:scopes db-app))
-                scopes-to-be-deleted (set/difference (:scopes db-app) new-scopes)]
-            (doseq [scope scopes-to-be-created]
-              (sql/create-scope! {:application_id   application_id
-                                  :resource_type_id (:resource_type_id scope)
-                                  :scope_id         (:scope_id scope)}
-                                 {:connection connection}))
-            (doseq [scope scopes-to-be-deleted]
-              (sql/delete-scope! {:application_id   application_id
-                                  :resource_type_id (:resource_type_id scope)
-                                  :scope_id         (:scope_id scope)}
-                                 {:connection connection})))))
-      (log/info "Updated application %s with %s." application_id application)))
+            ; sync scopes
+            (let [scopes-to-be-created (set/difference new-scopes (:scopes db-app))
+                  scopes-to-be-deleted (set/difference (:scopes db-app) new-scopes)]
+              (doseq [scope scopes-to-be-created]
+                (sql/create-scope! {:application_id   application_id
+                                    :resource_type_id (:resource_type_id scope)
+                                    :scope_id         (:scope_id scope)}
+                                   {:connection connection}))
+              (doseq [scope scopes-to-be-deleted]
+                (sql/delete-scope! {:application_id   application_id
+                                    :resource_type_id (:resource_type_id scope)
+                                    :scope_id         (:scope_id scope)}
+                                   {:connection connection})))))
+        (log/info "Updated application %s with %s." application_id application))))
   (response nil))
 
 (defn update-application-status
