@@ -19,13 +19,18 @@ You can run mint by starting it with Docker:
 
 Configuration is provided via environment variables during start.
 
-Variable         | Default                 | Description
----------------- | ----------------------- | -----------
-HTTP_PORT        | `8080`                  | TCP port to provide the HTTP API.
-HTTP_CORS_ORIGIN |                         | Domain for cross-origin JavaScript requests. If set, the Access-Control headers will be set.
-DB_SUBNAME       | `//localhost:5432/mint` | JDBC connection information of your database.
-DB_USER          | `postgres`              | Database user.
-DB_PASSWORD      | `postgres`              | Database password.
+Variable              | Mandatory? | Default                 | Description
+--------------------- | ---------- | ----------------------- | -----------
+MINT_USERNAME_PREFIX  | no         |                         | Prefix for the user id of the service user. E.g. app-id: `kio` and prefix: `stups_` will result in `stups_kio`
+HTTP_PORT             | yes        | `8080`                  | TCP port to provide the HTTP API.
+HTTP_CORS_ORIGIN      | yes        |                         | Domain for cross-origin JavaScript requests. If set, the Access-Control headers will be set.
+HTTP_TOKENINFO_URL    | no         |                         | Mandatory to enable OAuth 2.0 security! Incoming access tokens will be verified using this endpoint
+HTTP_KIO_URL          | yes        |                         | URL of [Kio](https://github.com/zalando-stups/kio). Will be used to verify app ids.
+HTTP_ESSENTIALS_URL   | yes        |                         | URL of [essentials](https://github.com/zalando-stups/essentials). Will be used to verify scopes. 
+HTTP_TEAM_SERVICE_URL | yes        |                         | URL of the team API. Will be used to verify, that users may only edit their applications of their teams
+DB_SUBNAME            | yes        | `//localhost:5432/mint` | JDBC connection information of your database.
+DB_USER               | yes        | `postgres`              | Database user.
+DB_PASSWORD           | yes        | `postgres`              | Database password.
 
 Example:
 
