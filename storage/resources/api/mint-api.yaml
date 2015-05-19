@@ -222,6 +222,10 @@ paths:
           description: configuration status updated
         default:
           $ref: '#/responses/Error'
+      security:
+        - oauth2:
+          - uid
+          - application.write_all_sensitive
 
     delete:
       summary: delete application configuration
@@ -339,3 +343,4 @@ securityDefinitions:
     authorizationUrl: https://example.com/oauth2/dialog
     scopes:
       uid: Unique identifier of the user accessing the service.
+      application.write_all_sensitive: Write sensitive information of an application, e.g. credentials
