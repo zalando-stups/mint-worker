@@ -16,7 +16,10 @@
   (:require [org.zalando.stups.mint.storage.sql :as sql]
             [org.zalando.stups.friboo.log :as log]
             [org.zalando.stups.friboo.ring :refer :all]
+            [org.zalando.stups.friboo.config :refer [require-config]]
             [org.zalando.stups.friboo.system.http :refer [def-http-component]]
+            [org.zalando.stups.mint.storage.external.apps :refer [get-app]]
+            [io.sarnowski.swagger1st.util.api :refer [throw-error]]
             [ring.util.response :refer :all]
             [clojure.data.json :refer [JSONWriter]]
             [clojure.java.jdbc :as jdbc]
@@ -117,20 +120,27 @@
 
 (defn create-or-update-application
   "Creates or updates an appliction. If no s3 buckets are given, deletes the application."
-  [{:keys [application_id application]} _ db config]
+  [{:keys [application_id application]} {:keys [configuration tokeninfo]} db mint-config]
   (log/debug "Creating or updating application %s with %s..." application_id application)
   (if (empty? (:s3_buckets application))
     (do
       (sql/delete-application! {:application_id application_id} {:connection db})
       (log/info "Deleted application %s because no s3 buckets were given." application_id))
     (do
+      (if tokeninfo
+        (when-not (get-app (require-config configuration :kio-url) application_id (get tokeninfo "access_token"))
+          (throw-error
+            400
+            (str "Application '" application_id "' does not exist in Kio")
+            {:invalid_application_id application_id}))
+        (log/warn "Could not verify if app exists in Kio, because security was disabled (no HTTP_TOKENINFO_URL set)"))
       (jdbc/with-db-transaction
         [connection db]
         ; check app base information
         (let [db-app (load-application application_id db)
               new-s3-buckets (apply sorted-set (:s3_buckets application))
               new-scopes (apply sorted-set-by scopes-compared (:scopes application))
-              prefix (:username-prefix config)
+              prefix (:username-prefix mint-config)
               username (if prefix (str prefix application_id) application_id)]
           ; sync app
           (if db-app
