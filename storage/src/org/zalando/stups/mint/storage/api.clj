@@ -19,6 +19,7 @@
             [org.zalando.stups.friboo.config :refer [require-config]]
             [org.zalando.stups.friboo.system.http :refer [def-http-component]]
             [org.zalando.stups.mint.storage.external.apps :refer [get-app]]
+            [org.zalando.stups.mint.storage.external.scopes :refer [get-scope]]
             [io.sarnowski.swagger1st.util.api :refer [throw-error]]
             [ring.util.response :refer :all]
             [clojure.data.json :refer [JSONWriter]]
@@ -118,6 +119,25 @@
       (content-type-json (response app)))
     (not-found nil)))
 
+(defn- check-app-exists
+  "Throws an error if app does not exist in Kio"
+  [application-id kio-url access-token]
+  (when-not (get-app kio-url application-id access-token)
+    (throw-error
+      400
+      (str "Application '" application-id "' does not exist in Kio")
+      {:invalid_application_id application-id})))
+
+(defn- check-scopes-exist
+  "Throws an error if any of the given scopes does not exist in essentials"
+  [scopes essentials-url access-token]
+  (let [invalid-scopes (remove #(get-scope (:resource_type_id %) (:scope_id %) essentials-url access-token) scopes)]
+    (when-not (empty? invalid-scopes)
+      (throw-error
+        400
+        "Some scopes do not exist in essentials"
+        {:invalid_scopes invalid-scopes}))))
+
 (defn create-or-update-application
   "Creates or updates an appliction. If no s3 buckets are given, deletes the application."
   [{:keys [application_id application]} {:keys [configuration tokeninfo]} db mint-config]
@@ -126,20 +146,19 @@
     (do
       (sql/delete-application! {:application_id application_id} {:connection db})
       (log/info "Deleted application %s because no s3 buckets were given." application_id))
-    (do
+    (let [new-scopes (apply sorted-set-by scopes-compared (:scopes application))]
       (if tokeninfo
-        (when-not (get-app (require-config configuration :kio-url) application_id (get tokeninfo "access_token"))
-          (throw-error
-            400
-            (str "Application '" application_id "' does not exist in Kio")
-            {:invalid_application_id application_id}))
+        (let [access-token (get tokeninfo "access_token")
+              kio-url (require-config configuration :kio-url)
+              essentials-url (require-config configuration :essentials-url)]
+          (check-app-exists application_id kio-url access-token)
+          (check-scopes-exist new-scopes essentials-url access-token))
         (log/warn "Could not verify if app exists in Kio, because security was disabled (no HTTP_TOKENINFO_URL set)"))
       (jdbc/with-db-transaction
         [connection db]
         ; check app base information
         (let [db-app (load-application application_id db)
               new-s3-buckets (apply sorted-set (:s3_buckets application))
-              new-scopes (apply sorted-set-by scopes-compared (:scopes application))
               prefix (:username-prefix mint-config)
               username (if prefix (str prefix application_id) application_id)]
           ; sync app

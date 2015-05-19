@@ -244,7 +244,7 @@ parameters:
     name: application_id
     in: path
     type: string
-    description: ID of the application
+    description: ID of the application. Must exist in Kio.
     required: true
 
 responses:
@@ -292,17 +292,15 @@ definitions:
       scopes:
         type: array
         description: |
-          List of scopes, that this service user should be able to use
+          List of scopes, that this service user should be able to use. All scopes MUST exist in essentials.
         items:
           type: object
           properties:
             resource_type_id:
               type: string
-              pattern: "^[a-z][a-z0-9-_]*[a-z0-9]$"
               example: sales-order
             scope_id:
               type: string
-              pattern: "^[a-z][a-z0-9-_]*[a-z0-9]$"
               example: read
     required:
       - is_client_confidential
