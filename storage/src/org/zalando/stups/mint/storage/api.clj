@@ -27,7 +27,10 @@
             [clojure.java.jdbc :as jdbc]
             [clojure.set :as set]
             [clojure.string :as str]
-            [clj-time.coerce :refer [to-sql-time from-sql-time]]))
+            [clj-time.coerce :refer [to-sql-time from-sql-time]]
+            [io.sarnowski.swagger1st.util.api :as api])
+  (:import (com.netflix.hystrix.exception HystrixRuntimeException)
+           (java.util.concurrent ExecutionException)))
 
 ; define the API component and its dependencies
 (def-http-component API "api/mint-api.yaml" [db config])
@@ -124,7 +127,12 @@
   "Throws an error if app does not exist in Kio"
   [application-id kio-url access-token]
   (or
-    (get-app kio-url application-id access-token)
+    (try
+      (get-app kio-url access-token application-id)
+      (catch HystrixRuntimeException e
+        (let [reason (-> e .getCause .toString)]
+          (log/warn "Could not get app from Kio %s. Cause: %s" kio-url reason)
+          (api/throw-error 503 "Kio is not avaliable" {:kio_url kio-url :reason reason}))))
     (throw-error
       400
       (str "Application '" application-id "' does not exist in Kio")
@@ -132,9 +140,14 @@
 
 (defn- require-scope
   [{:keys [resource_type_id scope_id]} essentials-url access-token]
-  (merge {:resource_type_id resource_type_id :scope_id scope_id})
+  (log/debug "Require scope %s %s" resource_type_id scope_id)
   (or
-    (get-scope resource_type_id scope_id essentials-url access-token)
+    (try
+      (get-scope essentials-url access-token resource_type_id scope_id)
+      (catch HystrixRuntimeException e
+        (let [reason (-> e .getCause .toString)]
+          (log/warn "Could not get app from essentials %s. Cause: %s" essentials-url reason)
+          (api/throw-error 503 "essentials is not avaliable." {:essentials_url essentials-url :reason reason}))))
     (throw-error
       400
       (str "Scope " resource_type_id "." scope_id " does not exist in essentials")
@@ -143,7 +156,12 @@
 (defn- require-scopes
   "Throws an error if any of the given scopes does not exist in essentials"
   [scopes essentials-url access-token]
-  (map #(require-scope % essentials-url access-token) scopes))
+  (log/debug "Require scopes %s" scopes)
+  (->> scopes
+       (map #(future (require-scope % essentials-url access-token)))
+       doall
+       (map #(deref %))
+       doall))
 
 (defn create-or-update-application
   "Creates or updates an appliction. If no s3 buckets are given, deletes the application."
@@ -151,12 +169,16 @@
   (log/debug "Creating or updating application %s with %s..." application_id application)
   (let [new-scopes (apply sorted-set-by scopes-compared (:scopes application))]
     (if tokeninfo
-      (let [access-token (get tokeninfo "access_token")
-            kio-url (require-config configuration :kio-url)
-            essentials-url (require-config configuration :essentials-url)
-            app (require-app application_id kio-url access-token)]
-        (require-internal-team (:team_id app) request)
-        (require-scopes new-scopes essentials-url access-token))
+      (try
+        (let [access-token (get tokeninfo "access_token")
+              kio-url (require-config configuration :kio-url)
+              essentials-url (require-config configuration :essentials-url)
+              app (require-app application_id kio-url access-token)
+              team (future (require-internal-team (:team_id app) request))]
+          (require-scopes new-scopes essentials-url access-token)
+          @team)
+        (catch ExecutionException e
+          (throw (.getCause e))))
       (log/warn "Could not perform further validation, because security was disabled (no HTTP_TOKENINFO_URL set)"))
     (if (empty? (:s3_buckets application))
       (do
