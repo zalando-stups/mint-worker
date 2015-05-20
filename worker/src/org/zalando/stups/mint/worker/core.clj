@@ -16,7 +16,6 @@
   (:require [com.stuartsierra.component :refer [using system-map]]
             [org.zalando.stups.friboo.config :as config]
             [org.zalando.stups.friboo.system :as system]
-            [org.zalando.stups.friboo.system.credentials :as credentials]
             [org.zalando.stups.friboo.system.oauth2 :as oauth2]
             [org.zalando.stups.friboo.log :as log]
             [org.zalando.stups.mint.worker.job :as job])
@@ -31,14 +30,11 @@
                          default-configuration])
 
         system (system-map
-                 :credentials (credentials/map->CredentialUpdater {:configuration (:credentials configuration)})
-                 :tokens (using
-                           (oauth2/map->OAUth2TokenRefresher {:configuration (:oauth2 configuration)
+                 :tokens (oauth2/map->OAUth2TokenRefresher {:configuration (:oauth2 configuration)
                                                               :tokens        {:mint-storage-rw-api ["uid"]
                                                                               :kio-ro-api          ["uid"]
                                                                               :service-user-rw-api ["uid"]
                                                                               :essentials-ro-api   ["uid"]}})
-                           [:credentials])
                  :jobs (using (job/map->Jobs {:configuration (:jobs configuration)})
                               [:tokens]))]
 

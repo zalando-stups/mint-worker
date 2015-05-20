@@ -27,10 +27,8 @@
             [clojure.java.jdbc :as jdbc]
             [clojure.set :as set]
             [clojure.string :as str]
-            [clj-time.coerce :refer [to-sql-time from-sql-time]]
-            [io.sarnowski.swagger1st.util.api :as api])
-  (:import (com.netflix.hystrix.exception HystrixRuntimeException)
-           (java.util.concurrent ExecutionException)))
+            [clj-time.coerce :refer [to-sql-time from-sql-time]])
+  (:import (java.util.concurrent ExecutionException)))
 
 ; define the API component and its dependencies
 (def-http-component API "api/mint-api.yaml" [db config])
@@ -127,12 +125,7 @@
   "Throws an error if app does not exist in Kio"
   [application-id kio-url access-token]
   (or
-    (try
-      (get-app kio-url access-token application-id)
-      (catch HystrixRuntimeException e
-        (let [reason (-> e .getCause .toString)]
-          (log/warn "Could not get app from Kio %s. Cause: %s" kio-url reason)
-          (api/throw-error 503 "Kio is not avaliable" {:kio_url kio-url :reason reason}))))
+    (get-app kio-url access-token application-id)
     (throw-error
       400
       (str "Application '" application-id "' does not exist in Kio")
@@ -142,12 +135,7 @@
   [{:keys [resource_type_id scope_id]} essentials-url access-token]
   (log/debug "Require scope %s %s" resource_type_id scope_id)
   (or
-    (try
-      (get-scope essentials-url access-token resource_type_id scope_id)
-      (catch HystrixRuntimeException e
-        (let [reason (-> e .getCause .toString)]
-          (log/warn "Could not get app from essentials %s. Cause: %s" essentials-url reason)
-          (api/throw-error 503 "essentials is not avaliable." {:essentials_url essentials-url :reason reason}))))
+    (get-scope essentials-url access-token resource_type_id scope_id)
     (throw-error
       400
       (str "Scope " resource_type_id "." scope_id " does not exist in essentials")
@@ -160,7 +148,7 @@
   (->> scopes
        (map #(future (require-scope % essentials-url access-token)))
        doall
-       (map #(deref %))
+       (map deref)
        doall))
 
 (defn create-or-update-application
