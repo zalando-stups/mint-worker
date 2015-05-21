@@ -1,9 +1,11 @@
 (ns org.zalando.stups.mint.worker.external.s3
-  (:require [amazonica.aws.s3 :as s3]
-
-            [clojure.data.json :as json]
+  (:require [clojure.data.json :as json]
             [clojure.java.io :as io])
-  (:import (java.io ByteArrayInputStream)))
+  (:import (java.io ByteArrayInputStream)
+           (com.amazonaws.services.s3 AmazonS3Client)
+           (com.amazonaws.services.s3.model PutObjectRequest ObjectMetadata CannedAccessControlList)))
+
+(def s3client (AmazonS3Client.))
 
 (defn put-string
   "Stores an object in S3."
@@ -12,11 +14,13 @@
                  (json/write-str)
                  (.getBytes "UTF-8"))
         stream (-> bytes
-                  (ByteArrayInputStream.))]
-    (s3/put-object :bucket-name bucket-name
-                   :key path
-                   :metadata {:content-length (count bytes)}
-                   :input-stream stream)))
+                  (ByteArrayInputStream.))
+        metadata (doto  (ObjectMetadata.)
+                   (.setContentLength (count bytes))
+                   (.setContentType "application/json"))
+        request (doto (PutObjectRequest. bucket-name path stream metadata)
+                  (.withCannedAcl CannedAccessControlList/BucketOwnerRead))]
+    (.putObject s3client request)))
 
 (defn save-user [bucket-name app-id username password]
   (put-string bucket-name
