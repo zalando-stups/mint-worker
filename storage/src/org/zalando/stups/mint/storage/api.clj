@@ -64,13 +64,13 @@
 
 (defn- load-scopes
   [application_id db]
-  (->> (sql/read-scopes {:application_id application_id} {:connection db})
+  (->> (sql/cmd-read-scopes {:application_id application_id} {:connection db})
        (map strip-prefix)
        (apply sorted-set-by scopes-compared)))
 
 (defn- load-application
   [application_id db]
-  (when-first [row (sql/read-application {:application_id application_id} {:connection db})]
+  (when-first [row (sql/cmd-read-application {:application_id application_id} {:connection db})]
     (-> row
         strip-prefix
         (update-in [:s3_buckets] parse-s3-buckets)
@@ -87,10 +87,10 @@
         (if (or resource_type_id scope_id)
           (do (log/debug "Reading application configurations with resource_type '%s' and scope '%s'..."
                          resource_type_id scope_id)
-              (sql/filter-applications {:resource_type_id resource_type_id :scope_id scope_id} {:connection db}))
+              (sql/cmd-filter-applications {:resource_type_id resource_type_id :scope_id scope_id} {:connection db}))
           (do (log/debug "Reading application configurations with resource_type '%s' and scope '%s'..."
                          resource_type_id scope_id)
-              (sql/read-applications {} {:connection db})))]
+              (sql/cmd-read-applications {} {:connection db})))]
     (->> db-result
          (map strip-prefix)
          (map #(update-in % [:last_synced] from-sql-time))
@@ -170,7 +170,7 @@
       (log/warn "Could not perform further validation, because security was disabled (no HTTP_TOKENINFO_URL set)"))
     (if (empty? (:s3_buckets application))
       (do
-        (sql/delete-application! {:application_id application_id} {:connection db})
+        (sql/cmd-delete-application! {:application_id application_id} {:connection db})
         (log/info "Deleted application %s because no s3 buckets were given." application_id))
       (do
         (jdbc/with-db-transaction
@@ -187,13 +187,13 @@
                              (= (:is_client_confidential db-app) (:is_client_confidential application))
                              (= (:s3_buckets db-app) new-s3-buckets)
                              (= (:scopes db-app) new-scopes))
-                (sql/update-application! {:application_id         application_id
+                (sql/cmd-update-application! {:application_id         application_id
                                           :redirect_url           (:redirect_url application)
                                           :is_client_confidential (:is_client_confidential application)
                                           :s3_buckets             (str/join "," new-s3-buckets)}
                                          {:connection connection}))
               ; create new app
-              (sql/create-application! {:application_id         application_id
+              (sql/cmd-create-application! {:application_id         application_id
                                         :redirect_url           (:redirect_url application)
                                         :is_client_confidential (:is_client_confidential application)
                                         :s3_buckets             (str/join "," new-s3-buckets)
@@ -203,12 +203,12 @@
             (let [scopes-to-be-created (set/difference new-scopes (:scopes db-app))
                   scopes-to-be-deleted (set/difference (:scopes db-app) new-scopes)]
               (doseq [scope scopes-to-be-created]
-                (sql/create-scope! {:application_id   application_id
+                (sql/cmd-create-scope! {:application_id   application_id
                                     :resource_type_id (:resource_type_id scope)
                                     :scope_id         (:scope_id scope)}
                                    {:connection connection}))
               (doseq [scope scopes-to-be-deleted]
-                (sql/delete-scope! {:application_id   application_id
+                (sql/cmd-delete-scope! {:application_id   application_id
                                     :resource_type_id (:resource_type_id scope)
                                     :scope_id         (:scope_id scope)}
                                    {:connection connection})))))
@@ -219,7 +219,7 @@
   "Updates an existing application."
   [{:keys [application_id status]} _ db _]
   (log/debug "Update application status %s ..." application_id)
-  (if (pos? (sql/update-application-status! {:application_id         application_id
+  (if (pos? (sql/cmd-update-application-status! {:application_id         application_id
                                              :client_id              (:client_id status)
                                              :last_password_rotation (to-sql-time (:last_password_rotation status))
                                              :last_client_rotation   (to-sql-time (:last_client_rotation status))
@@ -234,7 +234,7 @@
   "Deletes an application configuration."
   [{:keys [application_id]} _ db _]
   (log/debug "Delete application %s ..." application_id)
-  (let [deleted (pos? (sql/delete-application! {:application_id application_id} {:connection db}))]
+  (let [deleted (pos? (sql/cmd-delete-application! {:application_id application_id} {:connection db}))]
     (if deleted
       (do (log/info "Deleted application %s." application_id)
           (response nil))

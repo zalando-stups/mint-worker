@@ -2,9 +2,9 @@
   (:require [clj-http.client :as client]
             [org.zalando.stups.friboo.ring :refer [conpath]]
             [slingshot.slingshot :refer [try+]]
-            [com.netflix.hystrix.core :as hystrix]))
+            [com.netflix.hystrix.core :refer [defcommand]]))
 
-(hystrix/defcommand
+(defcommand
   get-scope
   "GET /resource-types/{resource_type_id}/scopes/{scope_id}"
   [essentials-url access-token resource-type-id scope-id]
