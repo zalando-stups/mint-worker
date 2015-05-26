@@ -7,7 +7,7 @@
 
   :min-lein-version "2.0.0"
 
-  :dependencies [[org.zalando.stups/friboo "0.20.0-SNAPSHOT"]
+  :dependencies [[org.zalando.stups/friboo "0.20.0"]
                  [yesql "0.5.0-rc2"]]
 
   :main ^:skip-aot org.zalando.stups.mint.storage.core

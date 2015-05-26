@@ -27,5 +27,4 @@
    :db-init-sql    "SET search_path TO zm_data, public"})
 
 (defqueries "db/mint.sql")
-
 (generate-hystrix-commands)
