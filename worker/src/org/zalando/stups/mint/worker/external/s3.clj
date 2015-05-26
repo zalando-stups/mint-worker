@@ -19,7 +19,7 @@
                    (.setContentLength (count bytes))
                    (.setContentType "application/json"))
         request (doto (PutObjectRequest. bucket-name path stream metadata)
-                  (.withCannedAcl CannedAccessControlList/BucketOwnerRead))]
+                  (.withCannedAcl CannedAccessControlList/BucketOwnerFullControl))]
     (.putObject s3client request)))
 
 (defn save-user [bucket-name app-id username password]
