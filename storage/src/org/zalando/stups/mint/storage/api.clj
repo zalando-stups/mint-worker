@@ -85,11 +85,10 @@
   [{:keys [resource_type_id scope_id]} _ db _]
   (let [db-result
         (if (or resource_type_id scope_id)
-          (do (log/debug "Reading application configurations with resource_type '%s' and scope '%s'..."
+          (do (log/debug "Reading application configurations with resource_type %s and scope %s..."
                          resource_type_id scope_id)
               (sql/cmd-filter-applications {:resource_type_id resource_type_id :scope_id scope_id} {:connection db}))
-          (do (log/debug "Reading application configurations with resource_type '%s' and scope '%s'..."
-                         resource_type_id scope_id)
+          (do (log/debug "Reading application configurations...")
               (sql/cmd-read-applications {} {:connection db})))]
     (->> db-result
          (map strip-prefix)

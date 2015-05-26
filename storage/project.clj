@@ -7,10 +7,8 @@
 
   :min-lein-version "2.0.0"
 
-  :dependencies [[org.clojure/clojure "1.6.0"]
-                 [org.zalando.stups/friboo "0.19.0"]
-                 [org.zalando.stups/yesql-hystrix "0.1.0"]
-                 [org.postgresql/postgresql "9.4-1201-jdbc41"]]
+  :dependencies [[org.zalando.stups/friboo "0.20.0-SNAPSHOT"]
+                 [yesql "0.5.0-rc2"]]
 
   :main ^:skip-aot org.zalando.stups.mint.storage.core
   :uberjar-name "mint-storage.jar"

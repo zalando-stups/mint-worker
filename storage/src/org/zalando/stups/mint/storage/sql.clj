@@ -13,8 +13,8 @@
 ; limitations under the License.
 
 (ns org.zalando.stups.mint.storage.sql
-  (:require [org.zalando.stups.yesql-hystrix :refer [defquerycommands]]
-            [org.zalando.stups.friboo.system.db :refer [def-db-component]]))
+  (:require [yesql.core :refer [defqueries]]
+            [org.zalando.stups.friboo.system.db :refer [def-db-component generate-hystrix-commands]]))
 
 (def-db-component DB :auto-migration? true)
 
@@ -26,4 +26,6 @@
    :db-password    "postgres"
    :db-init-sql    "SET search_path TO zm_data, public"})
 
-(defquerycommands "db/mint.sql")
+(defqueries "db/mint.sql")
+
+(generate-hystrix-commands)
