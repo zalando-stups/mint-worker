@@ -31,7 +31,7 @@
 
         system (system-map
                  :tokens (oauth2/map->OAUth2TokenRefresher {:configuration (:oauth2 configuration)
-                                                              :tokens        {:mint-storage-rw-api ["uid"]
+                                                              :tokens        {:mint-storage-rw-api ["uid" "application.write_all_sensitive"]
                                                                               :kio-ro-api          ["uid"]
                                                                               :service-user-rw-api ["uid"]
                                                                               :essentials-ro-api   ["uid"]}})
