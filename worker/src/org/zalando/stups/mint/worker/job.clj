@@ -95,6 +95,9 @@
                 scopes (update-in scopes [:owner-scope] conj
                                   {:realm  "services"       ; TODO hardcoded assumption of services realm and uid and no other services-owned scopes!! fix asap
                                    :scopes (conj (:application-scope scopes) "uid")})
+                scopes (update-in scopes [:owner-scope] conj
+                                  {:realm  "employees"       ; TODO hardcoded assumption that we currently have no employee scopes!! fix asap
+                                   :scopes ["uid"]})
                 response (services/create-or-update-user service-user-url
                                                          username
                                                          {:id            username
