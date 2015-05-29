@@ -220,24 +220,35 @@
         (log/debug "Skipping password and client rotation for inactive app %s" app-id))
       (log/debug "Synced app %s." app-id))))
 
+; used to track rate limiting of service user api
+(def rate-limited-until (atom (time/epoch)))
+
 (defn run-sync
   "Creates and deletes applications, rotates and distributes their credentials."
   [configuration tokens]
   (try
-    (let [storage-url (config/require-config configuration :mint-storage-url)]
-      (log/debug "Starting new synchronisation run with %s..." configuration)
+    (when (time/after? (time/now) @rate-limited-until)
+      (let [storage-url (config/require-config configuration :mint-storage-url)]
+        (log/debug "Starting new synchronisation run with %s..." configuration)
 
-      (let [apps (storage/list-apps storage-url tokens)]
-        (log/debug "Found apps: %s ..." apps)
-        (doseq [app apps]
-          (try
-            (sync-app configuration (:id app) tokens)
-            (storage/update-status storage-url (:id app) {:has_problems false} tokens)
-            (catch Exception e
-              (storage/update-status storage-url (:id app) {:has_problems true} tokens)
-              (log/warn "Could not synchronize app %s because %s." (:id app) (str e)))))))
+        (let [apps (storage/list-apps storage-url tokens)]
+          (log/debug "Found apps: %s ..." apps)
+          (doseq [app apps]
+            (try
+              (sync-app configuration (:id app) tokens)
+              (storage/update-status storage-url (:id app) {:has_problems false} tokens)
+              (catch Exception e
+                (when (= 429 (:status  (ex-data e)))
+                                        ; bubble up if we are rate limited
+                  (throw e))
+                (storage/update-status storage-url (:id app) {:has_problems true} tokens)
+                (log/warn "Could not synchronize app %s because %s." (:id app) (str e))))))))
     (catch Throwable e
-      (log/error e "Could not synchronize apps because %s." (str e)))))
+      (if (= 429 (:status  (ex-data e)))
+        (do
+          (log/warn "We got rate limited; pausing activities for the next 90 seconds.")
+          (reset! rate-limited-until (time/plus (time/now) (time/seconds 90))))
+        (log/error e "Could not synchronize apps because %s." (str e))))))
 
 (def-cron-component
   Jobs [tokens]
