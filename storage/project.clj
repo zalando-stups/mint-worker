@@ -1,4 +1,4 @@
-(defproject org.zalando.stups/mint-storage "0.1.0"
+(defproject org.zalando.stups/mint-storage "0.2.0-SNAPSHOT"
   :description "The secret rotator and distributor."
   :url "https://github.com/zalando-stups/mint"
 
