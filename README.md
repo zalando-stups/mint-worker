@@ -56,6 +56,7 @@ JOBS_ESSENTIALS_URL     | yes        |                         | URL of [essenti
 
 Example:
 
+~~~
 $ docker run -it \
     -e OAUTH2_ACCESS_TOKEN_URL="https://auth-example.com/access_token" \
     -e JOBS_KIO_URL="https://kio.example.com" \
@@ -63,6 +64,7 @@ $ docker run -it \
     -e JOBS_MINT_STORAGE_URL="https://mint.example.com" \
     -e JOBS_ESSENTIALS_URL="https://essentials.example.com" \
     stups/mint-storage
+~~~
 
 ## Building
 
