@@ -28,7 +28,7 @@ HTTP_PORT               | yes        | `8080`                  | TCP port to pro
 HTTP_CORS_ORIGIN        | yes        |                         | Domain for cross-origin JavaScript requests. If set, the Access-Control headers will be set.
 HTTP_TOKENINFO_URL      | no         |                         | Mandatory to enable OAuth 2.0 security! Incoming access tokens will be verified using this endpoint
 HTTP_KIO_URL            | yes        |                         | URL of [Kio](https://github.com/zalando-stups/kio). Will be used to verify app ids.
-HTTP_ESSENTIALS_URL     | yes        |                         | URL of [essentials](https://github.com/zalando-stups/essentials). Will be used to verify scopes. 
+HTTP_ESSENTIALS_URL     | yes        |                         | URL of [essentials](https://github.com/zalando-stups/essentials). Will be used to verify scopes.
 HTTP_TEAM_SERVICE_URL   | yes        |                         | URL of the team API. Will be used to verify, that users may only edit their applications of their teams
 DB_SUBNAME              | yes        | `//localhost:5432/mint` | JDBC connection information of your database.
 DB_USER                 | yes        | `postgres`              | Database user.
@@ -68,8 +68,7 @@ $ docker run -it \
 
 ## Building
 
-    $ lein uberjar
-    $ lein docker build
+    $ lein do uberjar, scm-source, docker build
 
 ## Releasing
 
