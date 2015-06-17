@@ -17,7 +17,9 @@
             [lein-cloverage "1.0.3"]
             [org.zalando.stups/lein-scm-source "0.2.0"]]
 
-  :docker {:image-name "stups/mint-worker"}
+  :docker {:image-name #=(eval (str (some-> (System/getenv "DEFAULT_DOCKER_REGISTRY")
+                                            (str "/"))
+                                    "stups/mint-worker"))}
 
   :release-tasks [["vcs" "assert-committed"]
                   ["change" "version" "leiningen.release/bump-version" "release"]
