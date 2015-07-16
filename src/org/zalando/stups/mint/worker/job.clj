@@ -1,5 +1,5 @@
 (ns org.zalando.stups.mint.worker.job
-  (:require [org.zalando.stups.friboo.system.cron :refer [def-cron-component]]
+  (:require [org.zalando.stups.friboo.system.cron :refer [def-cron-component job]]
             [org.zalando.stups.friboo.log :as log]
             [org.zalando.stups.friboo.config :as config]
             [overtone.at-at :refer [every]]
@@ -255,6 +255,6 @@
 
   (let [{:keys [every-ms initial-delay-ms]} configuration]
 
-    (every every-ms #(run-sync configuration tokens) pool :initial-delay initial-delay-ms :desc "synchronisation")))
+    (every every-ms (job run-sync configuration tokens) pool :initial-delay initial-delay-ms :desc "synchronisation")))
 
 
