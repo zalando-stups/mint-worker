@@ -7,7 +7,7 @@
 
   :min-lein-version "2.0.0"
 
-  :dependencies [[org.zalando.stups/friboo "0.31.0"]]
+  :dependencies [[org.zalando.stups/friboo "0.32.0"]]
 
   :main ^:skip-aot org.zalando.stups.mint.worker.core
   :uberjar-name "mint-worker.jar"
