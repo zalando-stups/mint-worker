@@ -241,7 +241,10 @@
                 (when (= 429 (:status  (ex-data e)))
                                         ; bubble up if we are rate limited
                   (throw e))
-                (storage/update-status storage-url (:id app) {:has_problems true} tokens)
+                (storage/update-status storage-url (:id app)
+                                                   {:has_problems true
+                                                    :message (str e)}
+                                                   tokens)
                 (log/warn "Could not synchronize app %s because %s." (:id app) (str e))))))))
     (catch Throwable e
       (if (= 429 (:status  (ex-data e)))
