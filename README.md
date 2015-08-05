@@ -1,5 +1,7 @@
 # mint
 
+[![Build Status](https://travis-ci.org/zalando-stups/mint-worker.svg?branch=master)](https://travis-ci.org/zalando-stups/mint-worker)
+
 mint is the secret rotator and distributor for the STUPS ecosystem.
 
 ## Download
