@@ -14,7 +14,21 @@
 (def default-configuration
   {:jobs-cpu-count        1
    :jobs-every-ms         10000
-   :jobs-initial-delay-ms 1000})
+   :jobs-initial-delay-ms 1000
+   :jobs-max-s3-errors    10})
+ 
+(def not-nil?
+  (comp not nil?))
+
+(defmacro busy-map
+  "The opposite of a lazy map -> (doall (map args))"
+  [f coll]
+  `(doall (map ~f ~coll)))
+
+(defmacro has-error
+  "Returns first non-nil value or nil"
+  [expr]
+  `(some not-nil? ~expr))
 
 (defn- parse-date-time
   [string]
@@ -114,14 +128,21 @@
 
             (when (and (not (:is_client_confidential app)) (nil? (:client_id app)))
               (log/info "Saving non-confidential client ID %s for app %s..." new-client-id app-id)
-              (doseq [bucket-name bucket-names]
-                (s3/save-client bucket-name app-id new-client-id nil)))
+              (if-let [error (has-error (busy-map #(s3/save-client % app-id new-client-id nil)
+                                                  bucket-names))]
+                (do
+                  (log/debug "Could not save client ID: %s" (str error))
+                  ; throw to update s3_errors once outside
+                  (throw error))
+                (do
+                  (log/debug "Updating last synced time and client_id for app %s..." app-id)
+                  (storage/update-status storage-url app-id
+                                                     {:last_synced (format-date-time (time/now))
+                                                      :client_id new-client-id}
+                                                     tokens)
 
-            (log/debug "Updating last synced time and client_id for app %s..." app-id)
-            (storage/update-status storage-url app-id {:last_synced (format-date-time (time/now)) :client_id new-client-id} tokens)
-
-            (log/info "Successfully synced app %s" app-id)
-            (assoc app :client_id new-client-id)))
+                  (log/info "Successfully synced app %s" app-id)
+                  (assoc app :client_id new-client-id))))))
 
         ; else
         (do
@@ -145,18 +166,21 @@
               bucket-names (:s3_buckets app)]
           ; Step 2: distribute it
           (log/info "Saving the new password for %s to S3 buckets: %s..." app-id bucket-names)
-          (doseq [bucket-name bucket-names]
-            (s3/save-user bucket-name app-id username password))
+          (if-let [error (has-error (busy-map #(s3/save-user % app-id username password)
+                                              bucket-names))]
+            (do
+              (log/debug "Could not save password to bucket: %s" (str error))
+              (throw error))
+            (do
+              ; Step 3: if successful distributed, commit it
+              (log/debug "Committing new password for app %s with transaction %s..." app-id txid)
+              (services/commit-password service-user-url username txid tokens)
 
-          ; Step 3: if successful distributed, commit it
-          (log/debug "Committing new password for app %s with transaction %s..." app-id txid)
-          (services/commit-password service-user-url username txid tokens)
+              ; Step 4: store last rotation time (now)
+              (log/debug "Saving last password rotation status for app %s..." app-id)
+              (storage/update-status storage-url app-id {:last_password_rotation (format-date-time (time/now))} tokens)
 
-          ; Step 4: store last rotation time (now)
-          (log/debug "Saving last password rotation status for app %s..." app-id)
-          (storage/update-status storage-url app-id {:last_password_rotation (format-date-time (time/now))} tokens)
-
-          (log/info "Successfully rotated password for app %s" app-id)))
+              (log/info "Successfully rotated password for app %s" app-id)))))
 
       ; else
       (log/debug "Password for app %s is still valid. Skip password rotation." app-id))))
@@ -172,53 +196,74 @@
         bucket-names (:s3_buckets app)]
     (if (or (nil? (:last_client_rotation app))
             (time/after? (time/now) (time/plus (parse-date-time (:last_client_rotation app)) (time/months 1))))
-      (do
-        ; Step 1: generate password
-        (log/info "Acquiring a new client for app %s..." app-id)
-        (let [generate-client-response (services/generate-new-client service-user-url username client-id tokens)
-              client-id (:client_id generate-client-response)
-              transaction-id (:txid generate-client-response)
-              client-secret (:client_secret generate-client-response)]
-          ; Step 2: distribute it
-          (log/info "Saving the new client for %s to S3 buckets: %s..." app-id bucket-names)
-          (doseq [bucket-name bucket-names]
-            (s3/save-client bucket-name app-id client-id client-secret))
+        (do
+          ; Step 1: generate password
+          (log/info "Acquiring a new client for app %s..." app-id)
+          (let [generate-client-response (services/generate-new-client service-user-url username client-id tokens)
+                client-id (:client_id generate-client-response)
+                transaction-id (:txid generate-client-response)
+                client-secret (:client_secret generate-client-response)]
+            ; Step 2: distribute it
+            (log/info "Saving the new client for %s to S3 buckets: %s..." app-id bucket-names)
+            (if-let [error (has-error (busy-map #(s3/save-user % app-id client-id client-secret)
+                                                bucket-names))]
+              (do
+                (log/debug "Could not save client to bucket: %s" (str error))
+                (throw error))
+              (do
+                ; Step 3: if successful distributed, commit it
+                (log/debug "Committing new secret for app %s with transaction %s..." app-id transaction-id)
+                (services/commit-client service-user-url username transaction-id tokens)
 
-          ; Step 3: if successful distributed, commit it
-          (log/debug "Committing new secret for app %s with transaction %s..." app-id transaction-id)
-          (services/commit-client service-user-url username transaction-id tokens)
+                ; Step 4: store last rotation time (now)
+                (log/debug "Saving last client rotation status for app %s..." app-id)
+                (storage/update-status storage-url app-id {:last_client_rotation (format-date-time (time/now))
+                                                           :client_id            client-id} tokens)
+                (log/info "Successfully rotated client for app %s" app-id)))))
 
-          ; Step 4: store last rotation time (now)
-          (log/debug "Saving last client rotation status for app %s..." app-id)
-          (storage/update-status storage-url app-id {:last_client_rotation (format-date-time (time/now))
-                                                     :client_id            client-id} tokens)
-
-          (log/info "Successfully rotated client for app %s" app-id)))
-
-      ; else
-      (log/debug "Client for app %s is still valid. Skip client rotation." app-id))))
+    ; else
+    (log/debug "Client for app %s is still valid. Skip client rotation." app-id))))
 
 (defn sync-app
   "Syncs the application with the given app-id."
-  [configuration app-id tokens]
-  (log/debug "============================== %s ==============================" app-id)
-  (log/debug "Start syncing app %s..." app-id)
-  (let [storage-url (config/require-config configuration :mint-storage-url)
+  [configuration app tokens]
+  (let [app-id (:id app)
+        s3-errors (:s3_errors app)
+        storage-url (config/require-config configuration :mint-storage-url)
         kio-url (config/require-config configuration :kio-url)
-        app (storage/get-app storage-url app-id tokens)
-        kio-app (apps/get-app kio-url app-id tokens)]
-    ; TODO handle 404 from kio for app
-    (log/debug "App has mint configuration %s" app)
-    (log/debug "App has kio configuration %s" kio-app)
-    (let [app (sync-user app kio-app configuration tokens)]
-      (if (:active kio-app)
-        (do
-          (sync-password app configuration tokens)
-          (if (:is_client_confidential app)
-            (sync-client app configuration tokens)
-            (log/debug "Skipping client rotation for non-confidential client %s" app-id)))
-        (log/debug "Skipping password and client rotation for inactive app %s" app-id))
-      (log/debug "Synced app %s." app-id))))
+        max-errors (config/require-config configuration :max-s3-errors)]
+    (log/debug "============================== %s ==============================" app-id)
+    (log/debug "Start syncing app %s..." app-id)
+    (if-not (> s3-errors
+               max-errors)            
+            (let [bucket-writability (map #(list app-id (s3/writable? % app-id))
+                                          (:s3_buckets app))
+                  unwritable (map first
+                                  (filter #(not (second %))
+                                          bucket-writability))]
+              (if (seq unwritable)
+                  (do
+                    (log/debug "Skipping sync for app %s because there are unwritable S3 buckets: %s" unwritable)
+                    (storage/update-status storage-url app-id
+                                                       {:has_problems true
+                                                        :s3_errors (inc s3-errors)
+                                                        :message (str "Unwritable S3 buckets: " (str unwritable))}
+                                                       tokens))
+                  ; TODO handle 404 from kio for app
+                  (let [kio-app (apps/get-app kio-url app-id tokens)
+                        app (sync-user app kio-app configuration tokens)]
+                    (log/debug "App has mint configuration %s" app)
+                    (log/debug "App has kio configuration %s" kio-app)
+                    (if (:active kio-app)
+                      (do
+                        (sync-password app configuration tokens)
+                        (if (:is_client_confidential app)
+                          (sync-client app configuration tokens)
+                          (log/debug "Skipping client rotation for non-confidential client %s" app-id)))
+                      (log/debug "Skipping password and client rotation for inactive app %s" app-id))
+                    (log/debug "Synced app %s." app-id)))
+            ; else
+            (log/debug "Skipping sync for app %s because could not write to S3 repeatedly" app-id)))))
 
 ; used to track rate limiting of service user api
 (def rate-limited-until (atom (time/epoch)))
@@ -235,9 +280,12 @@
           (log/debug "Found apps: %s ..." apps)
           (doseq [app apps]
             (try
-              (sync-app configuration (:id app) tokens)
+              (sync-app configuration
+                        app
+                        tokens)
               (storage/update-status storage-url (:id app) 
                                                  {:has_problems false
+                                                  :s3_errors 0
                                                   :message ""}
                                                  tokens)
               (catch Exception e
@@ -246,6 +294,8 @@
                   (throw e))
                 (storage/update-status storage-url (:id app)
                                                    {:has_problems true
+                                                    :s3_errors (if (= "S3Exception" (:type (ex-data e)))
+                                                                   (inc (:s3_errors app)))
                                                     :message (str e)}
                                                    tokens)
                 (log/warn "Could not synchronize app %s because %s." (:id app) (str e))))))))

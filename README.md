@@ -29,6 +29,7 @@ JOBS_KIO_URL            | yes        |                         | URL to [Kio](ht
 JOBS_SERVICE_USER_URL   | yes        |                         | URL to Service User API
 JOBS_MINT_STORAGE_URL   | yes        |                         | URL to Mint storage
 JOBS_ESSENTIALS_URL     | yes        |                         | URL of [essentials](https://github.com/zalando-stups/essentials). Used to verify scopes.
+JOBS_MAX_S3_ERRORS      | no         | 10                      | At which point mint-worker pauses password/client rotation for applications
 
 Example:
 
