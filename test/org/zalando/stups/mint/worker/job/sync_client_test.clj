@@ -21,7 +21,7 @@
 
 (def test-response
   {:client_id "kio-client2"
-   :transaction_id "123"
+   :txid "123"
    :client_secret "lolz"})
 
 ; it should skip when last rotation was <= 1 month ago
@@ -54,9 +54,9 @@
       (let [args (first (:commit @calls))]
         ; signature: storage-url username transaction-id
         (is (= (second args)
-               (:username test-response)))
+               (:username test-app)))
         (is (= (third args)
-               (:transaction_id test-response)))))))
+               (:txid test-response)))))))
 
 ; it should not skip when last rotation was never
 (deftest should-not-skip-when-never-rotated
