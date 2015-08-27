@@ -59,7 +59,7 @@
                (:transaction_id test-response)))))))
 
 ; it should not skip when last rotation was never
-(deftest should-not-skip-when-rotation-was-not-recently
+(deftest should-not-skip-when-never-rotated
   (let [calls (atom {})]
     (with-redefs [services/generate-new-client (constantly test-response)
                   s3/save-client (constantly nil)

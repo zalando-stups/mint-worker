@@ -3,9 +3,6 @@
             [org.zalando.stups.friboo.config :as config]
             [org.zalando.stups.mint.worker.external.scopes :as scopes]))
 
-(def not-nil?
-  (comp not nil?))
-
 (defmacro busy-map
   "The opposite of a lazy map -> (doall (map args))"
   [f coll]

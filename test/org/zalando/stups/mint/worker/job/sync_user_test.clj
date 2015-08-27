@@ -104,8 +104,8 @@
                            test-kio-app
                            test-config
                            test-tokens)]
-        (is (:client_id app)
-            (:client_id test-response))
+        (is (= (:client_id app)
+               (:client_id test-response)))
         (is (= 1 (count (:update @calls))))))))
 
 ; should not update and throw on s3 error

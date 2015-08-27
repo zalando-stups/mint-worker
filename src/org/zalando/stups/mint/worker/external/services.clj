@@ -8,9 +8,9 @@
 
    #{'user1', 'user2'}"
   [service-user-url tokens]
-  (into #{} (:body (client/get (conpath service-user-url "/services")
-                               {:oauth-token (oauth2/access-token :service-user-rw-api tokens)
-                                :as          :json}))))
+  (set (:body (client/get (conpath service-user-url "/services")
+                          {:oauth-token (oauth2/access-token :service-user-rw-api tokens)
+                           :as          :json}))))
 
 (defn delete-user
   [service-user-url username tokens]

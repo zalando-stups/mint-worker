@@ -41,7 +41,7 @@
         (is (= (:s3_errors args) nil))))))
 
 ; test s3 counter gets increased after s3 exception
-(deftest resiliency-error-on-sync-app
+(deftest resiliency-s3-error-on-sync-app
   (let [calls (atom {})]
     (with-redefs [storage/list-apps (constantly (list test-app))
                   storage/update-status (track calls :update-status)

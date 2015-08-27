@@ -87,7 +87,7 @@
           (is (= 0 (count (:update @calls)))))))))
 
 ; should not handle errors
-(deftest should-throw-if-bucket-unwritable
+(deftest should-not-handle-errors
   (let [calls (atom {})]
     (with-redefs [services/generate-new-password (throwing "whoopsie daisy")
                   services/commit-password (track calls :commit)
