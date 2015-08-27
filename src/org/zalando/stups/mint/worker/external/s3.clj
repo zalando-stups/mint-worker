@@ -11,8 +11,8 @@
 (def s3client (AmazonS3Client.))
 
 (defmacro S3Exception
-  [msg & data]
-  `(ex-info ~msg (merge (or ~data {}) {:type "S3Exception"})))
+  [msg data]
+  `(ex-info ~msg (merge ~data {:type "S3Exception"})))
 
 (defn put-string
   "Stores an object in S3."
@@ -45,12 +45,11 @@
                 (str app-id "/user.json")
                 {:application_username username
                  :application_password password})
-    (catch Exception e
-      (when (instance? e AmazonServiceException)
-            (S3Exception (.getMessage e)
-                         {:status (.getStatusCode e)
-                          :message (.getMessage e)
-                          :original e})))))
+    (catch AmazonServiceException e
+      (S3Exception (.getMessage e)
+                   {:status (.getStatusCode e)
+                    :message (.getMessage e)
+                    :original e}))))
 
 (defn save-client [bucket-name app-id client-id client_secret]
   (try
@@ -58,9 +57,8 @@
                 (str app-id "/client.json")
                 {:client_id client-id
                  :client_secret client_secret})
-    (catch Exception e
-      (when (instance? e AmazonServiceException)
-            (S3Exception (.getMessage e)
-                         {:status (.getStatusCode e)
-                          :message (.getMessage e)
-                          :original e})))))
+    (catch AmazonServiceException e
+      (S3Exception (.getMessage e)
+                   {:status (.getStatusCode e)
+                    :message (.getMessage e)
+                    :original e}))))
