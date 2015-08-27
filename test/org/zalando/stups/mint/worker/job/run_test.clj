@@ -1,5 +1,6 @@
 (ns org.zalando.stups.mint.worker.job.run-test
   (:require [clojure.test :refer :all]
+            [org.zalando.stups.mint.worker.test-helpers :refer [throwing track third]]
             [org.zalando.stups.mint.worker.external.storage :as storage]
             [org.zalando.stups.mint.worker.job.sync-app :refer [sync-app]]
             [org.zalando.stups.mint.worker.job.run :as run]))
@@ -18,25 +19,6 @@
 (def test-app
   {:id "kio"
    :s3_errors 0})
-
-(defn track
-  "Returns a function that conjs its arguments into the atom"
-  ([a action]
-   (fn [& args]
-     (let [prev (or (get @a action)
-                    [])]
-     (swap! a assoc action (conj prev args))))))
-
-(defn throwing
-  "Returns a function that throws with the provided arguments when executed"
-  [& [msg data]]
-  (fn [& args]
-    (throw (ex-info (or msg "any exception")
-                    (or data {})))))
-
-(defmacro third
-  [coll]
-  `(nth ~coll 2))
 
 ; test nothing bad happens without apps
 
