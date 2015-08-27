@@ -6,6 +6,7 @@
                                                                 test-config
                                                                 sequentially
                                                                 throwing
+                                                                third
                                                                 track]]
             [org.zalando.stups.mint.worker.job.sync-client :refer [sync-client]]
             [org.zalando.stups.mint.worker.external.services :as services]
@@ -49,7 +50,13 @@
                    test-config
                    test-tokens)
       (is (= 1 (count (:commit @calls))))
-      (is (= 1 (count (:update @calls)))))))
+      (is (= 1 (count (:update @calls))))
+      (let [args (first (:commit @calls))]
+        ; signature: storage-url username transaction-id
+        (is (= (second args)
+               (:username test-response)))
+        (is (= (third args)
+               (:transaction_id test-response)))))))
 
 ; it should not skip when last rotation was never
 (deftest should-not-skip-when-rotation-was-not-recently
