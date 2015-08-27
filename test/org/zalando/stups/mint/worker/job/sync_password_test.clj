@@ -76,14 +76,15 @@
                   s3/save-user (sequentially (s3/S3Exception "bad s3" {}) nil)
                   services/commit-password (track calls :commit)
                   storage/update-status (track calls :update)]
-      (let [error (sync-password test-app
-                                 test-config
-                                 test-tokens)]
-        (is (thrown? Exception error))
-        (is (:type (ex-data error))
-            "S3Exception")
-        (is (= 0 (count (:commit @calls))))
-        (is (= 0 (count (:update @calls))))))))
+      (try
+        (sync-password test-app
+                       test-config
+                       test-tokens)
+        (catch Exception error
+          (is (:type (ex-data error))
+              "S3Exception")
+          (is (= 0 (count (:commit @calls))))
+          (is (= 0 (count (:update @calls)))))))))
 
 ; should not handle errors
 (deftest should-throw-if-bucket-unwritable
