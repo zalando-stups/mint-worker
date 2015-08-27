@@ -21,7 +21,7 @@
                  (json/write-str)
                  (.getBytes "UTF-8"))
         stream (ByteArrayInputStream. bytes)
-        metadata (doto  (ObjectMetadata.)
+        metadata (doto (ObjectMetadata.)
                    (.setContentLength (count bytes))
                    (.setContentType "application/json"))
         request (doto (PutObjectRequest. bucket-name path stream metadata)

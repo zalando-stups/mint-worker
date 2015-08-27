@@ -78,11 +78,14 @@
                   s3/save-client (sequentially nil (s3/S3Exception "bad s3" {}))
                   services/commit-client (track calls :commit)
                   storage/update-status (track calls :update)]
-      (is (thrown? Exception (sync-client test-app
-                                          test-config
-                                          test-tokens)))
-      (is (= 0 (count (:commit @calls))))
-      (is (= 0 (count (:update @calls)))))))
+      (let [error (sync-client test-app
+                               test-config
+                               test-tokens)]
+        (is (thrown? Exception error))
+        (is (:type (ex-data error))
+            "S3Exception")
+        (is (= 0 (count (:commit @calls))))
+        (is (= 0 (count (:update @calls))))))))
 
 ; it should not handle errors
 (deftest do-not-handle-errors
