@@ -8,6 +8,9 @@ script:
   - lein test
   - lein uberjar
 
+after_script:
+  - bash -ex coveralls.sh
+
 notifications:
   email:
     on_failure: change
