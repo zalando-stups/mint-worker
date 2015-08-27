@@ -2,8 +2,7 @@
   (:require [clojure.data.json :as json]
             [clojure.java.io :as io])
   (:import (java.io ByteArrayInputStream)
-           (com.amazonaws AmazonClientException
-                          AmazonServiceException)
+           (com.amazonaws AmazonServiceException)
            (com.amazonaws.services.s3 AmazonS3Client)
            (com.amazonaws.services.s3.model PutObjectRequest
                                             ObjectMetadata
@@ -36,9 +35,9 @@
     (put-string bucket
                 (str app "/test-mint-write")
                 {:status "SUCCESS"})
+    true
     (catch AmazonServiceException e
-      false))
-  true)
+      false)))
 
 (defn save-user [bucket-name app-id username password]
   (try
