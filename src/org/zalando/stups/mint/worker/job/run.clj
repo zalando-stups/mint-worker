@@ -20,7 +20,8 @@
   "Creates and deletes applications, rotates and distributes their credentials."
   [configuration tokens]
   (try
-    (when (time/after? (time/now) @rate-limited-until)
+    (when (time/after? (time/now)
+                       @rate-limited-until)
       (let [storage-url (config/require-config configuration :mint-storage-url)]
         (log/debug "Starting new synchronisation run with %s..." configuration)
 
@@ -38,7 +39,7 @@
                                                  tokens)
               (catch Exception e
                 (when (= 429 (:status  (ex-data e)))
-                                        ; bubble up if we are rate limited
+                  ; bubble up if we are rate limited
                   (throw e))
                 (storage/update-status storage-url (:id app)
                                                    {:has_problems true
@@ -48,7 +49,7 @@
                                                    tokens)
                 (log/warn "Could not synchronize app %s because %s." (:id app) (str e))))))))
     (catch Throwable e
-      (if (= 429 (:status  (ex-data e)))
+      (if (= 429 (:status (ex-data e)))
         (do
           (log/warn "We got rate limited; pausing activities for the next 90 seconds.")
           (reset! rate-limited-until (time/plus (time/now) (time/seconds 90))))
