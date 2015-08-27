@@ -11,12 +11,14 @@
   [url & path]
   (let [[x & xs] path]
     (if x
-      (let [url (if (xor (.endsWith url "/")
-                         (.startsWith x "/"))
+      (let [first-with-slash (.endsWith url "/")
+            last-with-slash  (.startsWith x "/")
+            url (if (xor first-with-slash
+                         last-with-slash)
                   ; concat if exactly one of them has a /
                   (str url x)
-                  (if (and (.endsWith url "/")
-                           (.startsWith x "/"))
+                  (if (and first-with-slash
+                           last-with-slash)
                     ; if both have a /, remove one
                     (str url (s/replace-first x #"/" ""))
                     ; if none have a /, add one
