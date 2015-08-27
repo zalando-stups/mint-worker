@@ -2,3 +2,7 @@ language: clojure
 script: lein uberjar
 jdk:
   - oraclejdk8
+script:
+  - lein clean
+  - lein test
+  - lein uberjar
