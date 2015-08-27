@@ -1,5 +1,16 @@
 (ns org.zalando.stups.mint.worker.test-helpers)
 
+(def test-config
+  {:storage-url      "https://localhost"
+   :kio-url          "https://localhost"
+   :service-user-url "https://localhost"
+   :mint-storage-url "https://localhost"
+   :prefix           "stups_"
+   :max-s3-errors    10})
+
+(def test-tokens
+  {})
+
 (defn track
   "Returns a function that conjs its arguments into the atom"
   ([a action]
@@ -23,11 +34,13 @@
 (defn sequentially
   "Returns a function that returns provided arguments sequentially on every call"
   [& args]
-  (let [calls (atom 0)
+  (let [calls (atom -1)
         limit (dec (count args))]
     (fn [& inner]
-      (swap! calls inc)
-      (let [current (dec @calls)]
-        (nth args (if (> current limit)
-                      limit
-                      current))))))
+      (if (neg? limit)
+          nil
+          (do
+            (swap! calls inc)
+            (nth args (if (> @calls limit)
+                        limit
+                        @calls)))))))

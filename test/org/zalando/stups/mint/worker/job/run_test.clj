@@ -1,20 +1,13 @@
 (ns org.zalando.stups.mint.worker.job.run-test
   (:require [clojure.test :refer :all]
-            [org.zalando.stups.mint.worker.test-helpers :refer [throwing track third]]
+            [org.zalando.stups.mint.worker.test-helpers :refer [throwing
+                                                                track
+                                                                third
+                                                                test-tokens
+                                                                test-config]]
             [org.zalando.stups.mint.worker.external.storage :as storage]
             [org.zalando.stups.mint.worker.job.sync-app :refer [sync-app]]
             [org.zalando.stups.mint.worker.job.run :as run]))
-
-(def test-config
-  {:storage-url      "https://localhost"
-   :kio-url          "https://localhost"
-   :service-user-url "https://localhost"
-   :mint-storage-url "https://localhost"
-   :prefix           "stups_"
-   :max-s3-errors    10})
-
-(def test-tokens
-  {})
 
 (def test-app
   {:id "kio"

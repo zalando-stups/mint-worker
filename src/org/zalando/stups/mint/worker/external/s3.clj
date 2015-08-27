@@ -20,8 +20,7 @@
   (let [bytes (-> data
                  (json/write-str)
                  (.getBytes "UTF-8"))
-        stream (-> bytes
-                  (ByteArrayInputStream.))
+        stream (ByteArrayInputStream. bytes)
         metadata (doto  (ObjectMetadata.)
                    (.setContentLength (count bytes))
                    (.setContentType "application/json"))

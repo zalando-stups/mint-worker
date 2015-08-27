@@ -14,7 +14,7 @@
 (defmacro has-error
   "Returns first non-nil value or nil"
   [expr]
-  `(some not-nil? ~expr))
+  `(some identity ~expr))
 
 (defn parse-date-time
   [string]

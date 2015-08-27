@@ -3,7 +3,9 @@
             [org.zalando.stups.mint.worker.test-helpers :refer [throwing
                                                                 third
                                                                 track
-                                                                sequentially]]
+                                                                sequentially
+                                                                test-tokens
+                                                                test-config]]
             [org.zalando.stups.mint.worker.external.apps :as apps]
             [org.zalando.stups.mint.worker.external.storage :as storage]
             [org.zalando.stups.mint.worker.external.s3 :as s3]
@@ -11,17 +13,6 @@
             [org.zalando.stups.mint.worker.job.sync-client :refer [sync-client]]
             [org.zalando.stups.mint.worker.job.sync-user :refer [sync-user]]
             [org.zalando.stups.mint.worker.job.sync-password :refer [sync-password]]))
-
-(def test-config
-  {:storage-url      "https://localhost"
-   :kio-url          "https://localhost"
-   :service-user-url "https://localhost"
-   :mint-storage-url "https://localhost"
-   :prefix           "stups_"
-   :max-s3-errors    10})
-
-(def test-tokens
-  {})
 
 (def test-app
   {:id "kio"

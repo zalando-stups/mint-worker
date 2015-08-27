@@ -23,7 +23,7 @@
             (let [bucket-writability (map #(list app-id (s3/writable? % app-id))
                                           (:s3_buckets app))
                   unwritable (map first
-                                  (filter #(not (second %))
+                                  (remove second
                                           bucket-writability))]
               (if (seq unwritable)
                   (do
