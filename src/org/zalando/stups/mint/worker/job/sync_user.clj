@@ -13,9 +13,9 @@
   (let [storage-url (config/require-config configuration :mint-storage-url)
         service-user-url (config/require-config configuration :service-user-url)
         app-id (:id app)
-        team-id (:team_id kio-app)
         username (:username app)
-        bucket-names (:s3_buckets app)]
+        bucket-names (:s3_buckets app)
+        team-id (:team_id kio-app)]
 
     (if-not (:active kio-app)
       ; inactive app, check if deletion is required
@@ -54,7 +54,8 @@
                                                          tokens)
                 new-client-id (:client_id response)]
 
-            (when (and (not (:is_client_confidential app)) (nil? (:client_id app)))
+            (when (and (not (:is_client_confidential app))
+                       (nil? (:client_id app)))
               (log/info "Saving non-confidential client ID %s for app %s..." new-client-id app-id)
               (if-let [error (c/has-error (c/busy-map #(s3/save-client % app-id new-client-id nil)
                                                       bucket-names))]
@@ -71,7 +72,6 @@
 
                   (log/info "Successfully synced app %s" app-id)
                   (assoc app :client_id new-client-id))))))
-
         ; else
         (do
           (log/debug "App %s has not been modified since last sync. Skip sync." app-id)

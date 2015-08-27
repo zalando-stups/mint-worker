@@ -5,6 +5,7 @@
    :kio-url          "https://localhost"
    :service-user-url "https://localhost"
    :mint-storage-url "https://localhost"
+   :essentials-url   "https://localhost"
    :prefix           "stups_"
    :max-s3-errors    10})
 
