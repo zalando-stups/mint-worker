@@ -15,7 +15,7 @@
         s3-errors (:s3_errors app)
         storage-url (config/require-config configuration :mint-storage-url)
         kio-url (config/require-config configuration :kio-url)
-        max-errors (config/require-config configuration :max-s3-errors)]
+        max-errors (:max-s3-errors configuration)]
     (log/debug "============================== %s ==============================" app-id)
     (log/debug "Start syncing app %s..." app-id)
     (if-not (> s3-errors

@@ -11,7 +11,7 @@
    :service-user-url "https://localhost"
    :mint-storage-url "https://localhost"
    :prefix           "stups_"
-   :max-s3-errors    "10"})
+   :max-s3-errors    10})
 
 (def test-tokens
   {})
@@ -21,20 +21,17 @@
    :s3_errors 0})
 
 ; test nothing bad happens without apps
-
 (deftest resiliency-nothing
   (with-redefs [storage/list-apps (constantly [])]
     (run/run-sync test-config test-tokens)))
 
 ; test nothing bad happens on exception fetching apps
-
 (deftest resiliency-error-on-fetch
   (with-redefs [storage/list-apps (throwing "mint-storage down")]
     (run/run-sync test-config test-tokens)))
 
 ; test nothing bad happens on exception processing an app
 ; test s3 counter does not get increased after non-s3 exception
-
 (deftest resiliency-error-on-sync-app
   (let [calls (atom {})]
     (with-redefs [storage/list-apps (constantly (list test-app))
@@ -51,7 +48,6 @@
         (is (= (:s3_errors args) nil))))))
 
 ; test s3 counter gets increased after s3 exception
-
 (deftest resiliency-error-on-sync-app
   (let [calls (atom {})]
     (with-redefs [storage/list-apps (constantly (list test-app))

@@ -19,3 +19,15 @@
   "Just as first, second"
   [coll]
   `(nth ~coll 2))
+
+(defn sequentially
+  "Returns a function that returns provided arguments sequentially on every call"
+  [& args]
+  (let [calls (atom 0)
+        limit (dec (count args))]
+    (fn [& inner]
+      (swap! calls inc)
+      (let [current (dec @calls)]
+        (nth args (if (> current limit)
+                      limit
+                      current))))))
