@@ -11,7 +11,8 @@
             [org.zalando.stups.mint.worker.job.sync-client :refer [sync-client]]
             [org.zalando.stups.mint.worker.external.services :as services]
             [org.zalando.stups.mint.worker.external.storage :as storage]
-            [org.zalando.stups.mint.worker.external.s3 :as s3]))
+            [org.zalando.stups.mint.worker.external.s3 :as s3])
+  (:import (com.amazonaws.services.s3.model PutObjectResult)))
 
 (def test-app
   {:id "kio"
@@ -43,7 +44,7 @@
         test-app (assoc test-app :last_client_rotation past)
         calls (atom {})]
     (with-redefs [services/generate-new-client (constantly test-response)
-                  s3/save-client (constantly nil)
+                  s3/save-client (constantly (PutObjectResult.))
                   services/commit-client (track calls :commit)
                   storage/update-status (track calls :update)]
       (sync-client test-app
@@ -62,7 +63,7 @@
 (deftest should-not-skip-when-never-rotated
   (let [calls (atom {})]
     (with-redefs [services/generate-new-client (constantly test-response)
-                  s3/save-client (constantly nil)
+                  s3/save-client (constantly (PutObjectResult.))
                   services/commit-client (track calls :commit)
                   storage/update-status (track calls :update)]
       (sync-client test-app
@@ -75,18 +76,19 @@
 (deftest should-not-commit-if-s3-write-failed
   (let [calls (atom {})]
     (with-redefs [services/generate-new-client (constantly test-response)
-                  s3/save-client (sequentially nil (s3/S3Exception "bad s3" {}))
+                  s3/save-client (sequentially (PutObjectResult.) (s3/S3Exception "bad s3" {}))
                   services/commit-client (track calls :commit)
                   storage/update-status (track calls :update)]
-      (try 
+      (try
         (sync-client test-app
                      test-config
                      test-tokens)
+        (is false)
         (catch Exception error
           (is (:type (ex-data error))
-              "S3Exception")
-          (is (= 0 (count (:commit @calls))))
-          (is (= 0 (count (:update @calls)))))))))
+              "S3Exception")))
+      (is (= 0 (count (:commit @calls))))
+      (is (= 0 (count (:update @calls)))))))
 
 ; it should not handle errors
 (deftest do-not-handle-errors

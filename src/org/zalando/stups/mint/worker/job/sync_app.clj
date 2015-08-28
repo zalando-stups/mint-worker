@@ -19,9 +19,8 @@
     (log/debug "============================== %s ==============================" app-id)
     (log/debug "Start syncing app %s..." app-id)
     (if-not (> s3-errors
-               max-errors)            
-            (let [unwritable (doall (filter #(not (s3/writable? %))
-                                            (:s3_buckets app)))]
+               max-errors)
+            (let [unwritable (doall (remove #(s3/writable? % app-id) (:s3_buckets app)))]
               (if (seq unwritable)
                   (do
                     (log/debug "Skipping sync for app %s because there are unwritable S3 buckets: %s" unwritable)

@@ -9,9 +9,9 @@
   `(doall (map ~f ~coll)))
 
 (defmacro has-error
-  "Returns first non-nil value or nil"
-  [expr]
-  `(some identity ~expr))
+  "Returns first instance of Exception or nil"
+  [coll]
+  `(some #(when (instance? Exception %) %) ~coll))
 
 (defn parse-date-time
   [string]

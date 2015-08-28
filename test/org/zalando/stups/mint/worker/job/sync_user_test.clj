@@ -10,7 +10,8 @@
             [org.zalando.stups.mint.worker.job.common :as c]
             [org.zalando.stups.mint.worker.external.services :as services]
             [org.zalando.stups.mint.worker.external.storage :as storage]
-            [org.zalando.stups.mint.worker.external.s3 :as s3]))
+            [org.zalando.stups.mint.worker.external.s3 :as s3])
+  (:import (com.amazonaws.services.s3.model PutObjectResult)))
 
 (def test-app
   {:id "kio"
@@ -98,7 +99,7 @@
   (let [test-app (assoc test-app :is_client_confidential false)
         calls (atom {})]
     (with-redefs [services/create-or-update-user (constantly test-response)
-                  s3/save-client (constantly nil)
+                  s3/save-client (constantly (PutObjectResult.))
                   storage/update-status (track calls :update)]
       (let [app (sync-user test-app
                            test-kio-app
@@ -113,7 +114,7 @@
   (let [test-app (assoc test-app :is_client_confidential false)
         calls (atom {})]
     (with-redefs [services/create-or-update-user (constantly test-response)
-                  s3/save-client (sequentially nil (s3/S3Exception "bad s3" {}))
+                  s3/save-client (sequentially (PutObjectResult.) (s3/S3Exception "bad s3" {}))
                   storage/update-status (track calls :update)]
       (try
         (sync-user test-app
