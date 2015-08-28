@@ -43,8 +43,8 @@
                   (throw e))
                 (storage/update-status storage-url (:id app)
                                                    {:has_problems true
-                                                    :s3_errors (if (= "S3Exception" (:type (ex-data e)))
-                                                                   (inc (:s3_errors app)))
+                                                    :s3_errors (when (= "S3Exception" (:type (ex-data e)))
+                                                                 (inc (:s3_errors app)))
                                                     :message (str e)}
                                                    tokens)
                 (log/warn "Could not synchronize app %s because %s." (:id app) (str e))))))))
