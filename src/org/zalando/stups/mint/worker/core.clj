@@ -18,7 +18,7 @@
             [org.zalando.stups.friboo.system :as system]
             [org.zalando.stups.friboo.system.oauth2 :as oauth2]
             [org.zalando.stups.friboo.log :as log]
-            [org.zalando.stups.mint.worker.job :as job])
+            [org.zalando.stups.mint.worker.job.run :as job])
   (:gen-class))
 
 (defn run

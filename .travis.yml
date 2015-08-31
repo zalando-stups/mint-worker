@@ -1,4 +1,16 @@
 language: clojure
-script: lein uberjar
+
 jdk:
   - oraclejdk8
+
+script:
+  - lein clean
+  - lein test
+  - lein uberjar
+
+after_script:
+  - bash -ex coveralls.sh
+
+notifications:
+  email:
+    on_failure: change

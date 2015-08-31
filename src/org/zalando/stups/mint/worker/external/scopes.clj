@@ -1,5 +1,5 @@
 (ns org.zalando.stups.mint.worker.external.scopes
-  (:require [org.zalando.stups.mint.worker.util :refer [conpath]]
+  (:require [org.zalando.stups.friboo.ring :refer [conpath]]
             [clj-http.client :as client]
             [org.zalando.stups.friboo.system.oauth2 :as oauth2]))
 

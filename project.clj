@@ -7,13 +7,14 @@
 
   :min-lein-version "2.0.0"
 
-  :dependencies [[org.zalando.stups/friboo "0.32.0"]]
+  :dependencies [[org.clojure/clojure "1.7.0"]
+                 [org.zalando.stups/friboo "1.1.2"]]
 
   :main ^:skip-aot org.zalando.stups.mint.worker.core
   :uberjar-name "mint-worker.jar"
 
   :plugins [[io.sarnowski/lein-docker "1.1.0"]
-            [lein-cloverage "1.0.3"]
+            [lein-cloverage "1.0.6"]
             [org.zalando.stups/lein-scm-source "0.2.0"]]
 
   :docker {:image-name #=(eval (str (some-> (System/getenv "DEFAULT_DOCKER_REGISTRY")
