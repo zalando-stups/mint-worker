@@ -24,7 +24,7 @@
                   unwritable (doall (remove #(s3/writable? % app-id) (:s3_buckets app)))]
               (if (seq unwritable)
                   (do
-                    (log/debug "Skipping sync for app %s because there are unwritable S3 buckets: %s" unwritable)
+                    (log/debug "Skipping sync for app %s because there are unwritable S3 buckets: %s" app-id unwritable)
                     (storage/update-status storage-url app-id
                                                        {:has_problems true
                                                         :s3_errors (inc s3-errors)
