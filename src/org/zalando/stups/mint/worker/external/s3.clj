@@ -1,6 +1,7 @@
 (ns org.zalando.stups.mint.worker.external.s3
   (:require [clojure.data.json :as json]
-            [clojure.java.io :as io])
+            [clojure.java.io :as io]
+            [org.zalando.stups.friboo.log :as log])
   (:import (java.io ByteArrayInputStream)
            (com.amazonaws AmazonServiceException)
            (com.amazonaws.services.s3 AmazonS3Client)
@@ -34,8 +35,10 @@
     (put-string bucket
                 (str app "/test-mint-write")
                 {:status "SUCCESS"})
+    (log/debug "S3 bucket %s with prefix %s is writable" bucket app)
     true
     (catch AmazonServiceException e
+      (log/debug "S3 bucket %s with prefix %s is NOT WRITABLE. Reason %s." bucket app (str e))
       false)))
 
 (defn save-user [bucket-name app-id username password]

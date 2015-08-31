@@ -20,7 +20,8 @@
     (log/debug "Start syncing app %s..." app-id)
     (if-not (> s3-errors
                max-errors)
-            (let [unwritable (doall (remove #(s3/writable? % app-id) (:s3_buckets app)))]
+            (let [app        (storage/get-app storage-url app-id tokens)
+                  unwritable (doall (remove #(s3/writable? % app-id) (:s3_buckets app)))]
               (if (seq unwritable)
                   (do
                     (log/debug "Skipping sync for app %s because there are unwritable S3 buckets: %s" unwritable)
@@ -41,6 +42,6 @@
                           (sync-client app configuration tokens)
                           (log/debug "Skipping client rotation for non-confidential client %s" app-id)))
                       (log/debug "Skipping password and client rotation for inactive app %s" app-id))
-                    (log/debug "Synced app %s." app-id)))
+                    (log/debug "Synced app %s." app-id))))
             ; else
-            (log/debug "Skipping sync for app %s because could not write to S3 repeatedly" app-id)))))
+            (log/debug "Skipping sync for app %s because could not write to S3 repeatedly" app-id))))

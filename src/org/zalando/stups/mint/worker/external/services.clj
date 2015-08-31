@@ -3,6 +3,7 @@
             [clj-http.client :as client]
             [org.zalando.stups.friboo.system.oauth2 :as oauth2]))
 
+; TODO we should cache the result, because it is used quite often and won't change a lot
 (defn list-users
   "GET /services
 
