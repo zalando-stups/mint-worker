@@ -1,7 +1,8 @@
 (ns org.zalando.stups.mint.worker.external.s3
   (:require [clojure.data.json :as json]
             [clojure.java.io :as io]
-            [org.zalando.stups.friboo.log :as log])
+            [org.zalando.stups.friboo.log :as log]
+            [clojure.string :as str])
   (:import (java.io ByteArrayInputStream)
            (com.amazonaws AmazonServiceException)
            (com.amazonaws.services.s3 AmazonS3Client)
@@ -30,18 +31,22 @@
     (.putObject s3client request)))
 
 (defn writable?
-  [bucket app]
+  [bucket-name app-id]
+  {:pre [(not (str/blank? bucket-name))
+         (not (str/blank? app-id))]}
   (try
-    (put-string bucket
-                (str app "/test-mint-write")
+    (put-string bucket-name
+                (str app-id "/test-mint-write")
                 {:status "SUCCESS"})
-    (log/debug "S3 bucket %s with prefix %s is writable" bucket app)
+    (log/debug "S3 bucket %s with prefix %s is writable" bucket-name app-id)
     true
     (catch AmazonServiceException e
-      (log/debug "S3 bucket %s with prefix %s is NOT WRITABLE. Reason %s." bucket app (str e))
+      (log/debug "S3 bucket %s with prefix %s is NOT WRITABLE. Reason %s." bucket-name app-id (str e))
       false)))
 
 (defn save-user [bucket-name app-id username password]
+  {:pre [(not (str/blank? bucket-name))
+         (not (str/blank? app-id))]}
   (try
     (put-string bucket-name
                 (str app-id "/user.json")
@@ -54,6 +59,8 @@
                     :original e}))))
 
 (defn save-client [bucket-name app-id client-id client_secret]
+  {:pre [(not (str/blank? bucket-name))
+         (not (str/blank? app-id))]}
   (try
     (put-string bucket-name
                 (str app-id "/client.json")

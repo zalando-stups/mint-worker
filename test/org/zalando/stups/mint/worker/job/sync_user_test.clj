@@ -88,11 +88,12 @@
   (let [test-app (assoc test-app :is_client_confidential true)
         calls (atom {})]
     (with-redefs [services/create-or-update-user (track calls :update)]
-      (sync-user test-app
-                 test-kio-app
-                 test-config
-                 test-tokens)
-        (is (= 1 (count (:update @calls)))))))
+      (let [returned-app (sync-user test-app
+                                    test-kio-app
+                                    test-config
+                                    test-tokens)]
+        (is (= returned-app test-app))
+        (is (= 1 (count (:update @calls))))))))
 
 ; should sync client_id if not confidential and not available
 (deftest should-sync-if-not-confidential
