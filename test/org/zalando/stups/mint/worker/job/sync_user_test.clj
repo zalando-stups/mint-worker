@@ -87,13 +87,17 @@
 (deftest should-not-skip-if-not-synced
   (let [test-app (assoc test-app :is_client_confidential true)
         calls (atom {})]
-    (with-redefs [services/create-or-update-user (track calls :update)]
+    (with-redefs [services/create-or-update-user (fn [& args]
+                                                   (apply (track calls :update-user) args)
+                                                   test-response)
+                  storage/update-status (track calls :update-status)]
       (let [returned-app (sync-user test-app
                                     test-kio-app
                                     test-config
                                     test-tokens)]
-        (is (= returned-app test-app))
-        (is (= 1 (count (:update @calls))))))))
+        (is (:client_id returned-app))
+        (is (= 1 (count (:update-user @calls))))
+        (is (= 1 (count (:update-status @calls))))))))
 
 ; should sync client_id if not confidential and not available
 (deftest should-sync-if-not-confidential

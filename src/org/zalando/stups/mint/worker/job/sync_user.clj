@@ -56,28 +56,24 @@
                                                          tokens)
                 new-client-id (:client_id response)]
 
-            (if (and (not is_client_confidential)
-                     (nil? client_id))
-              (do
-                (log/info "Saving non-confidential client ID %s for app %s..." new-client-id id)
-                (if-let [error (c/has-error (c/busy-map #(s3/save-client % id new-client-id nil)
+            (when (and (not is_client_confidential)
+                       (nil? client_id))
+              (log/info "Saving non-confidential client ID %s for app %s..." new-client-id id)
+              (when-let [error (c/has-error (c/busy-map #(s3/save-client % id new-client-id nil)
                                                         s3_buckets))]
-                  (do
-                    (log/debug "Could not save client ID: %s" (str error))
-                    ; throw to update s3_errors once outside
-                    (throw error))
-                  (do
-                    (log/debug "Updating last synced time and client_id for app %s..." id)
-                    (storage/update-status storage-url id
-                                           {:last_synced (c/format-date-time (time/now))
-                                            :client_id   new-client-id}
-                                           tokens)
+                (log/debug "Could not save client ID: %s" (str error))
+                ; throw to update s3_errors once outside
+                (throw error)))
 
-                    (log/info "Successfully synced app %s" id)
-                    (assoc app :client_id new-client-id))))
+            (log/debug "Updating last synced time and client_id for app %s..." id)
+            (storage/update-status storage-url
+                                   id
+                                   {:last_synced (c/format-date-time (time/now)) :client_id new-client-id}
+                                   tokens)
 
-              ; else just return the app
-              app)))
+            (log/info "Successfully synced user for app %s" id)
+            (assoc app :client_id new-client-id)))
+
         ; else
         (do
           (log/debug "App %s has not been modified since last sync. Skip sync." id)

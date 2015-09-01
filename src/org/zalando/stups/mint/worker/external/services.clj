@@ -41,7 +41,8 @@
 
 (defn commit-password
   [service-user-url username transaction-id tokens]
-  {:pre [(not (str/blank? username))]}
+  {:pre [(not (str/blank? username))
+         (not (str/blank? transaction-id))]}
   (:body (client/put (conpath service-user-url "/services/" username "/password")
                      {:oauth-token  (oauth2/access-token :service-user-rw-api tokens)
                       :content-type :json
@@ -50,7 +51,8 @@
 
 (defn generate-new-client
   [service-user-url username client-id tokens]
-  {:pre [(not (str/blank? username))]}
+  {:pre [(not (str/blank? username))
+         (not (str/blank? client-id))]}
   (:body (client/post (conpath service-user-url "/services/" username "/client")
                       {:oauth-token  (oauth2/access-token :service-user-rw-api tokens)
                        :content-type :json
@@ -60,7 +62,8 @@
 
 (defn commit-client
   [service-user-url username transaction-id tokens]
-  {:pre [(not (str/blank? username))]}
+  {:pre [(not (str/blank? username))
+         (not (str/blank? transaction-id))]}
   (:body (client/put (conpath service-user-url "/services/" username "/client")
                      {:oauth-token  (oauth2/access-token :service-user-rw-api tokens)
                       :content-type :json

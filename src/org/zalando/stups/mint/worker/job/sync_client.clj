@@ -24,12 +24,12 @@
           ; Step 1: generate password
           (log/info "Acquiring a new client for app %s..." id)
           (let [generate-client-response (services/generate-new-client service-user-url username client_id tokens)
-                client-id (:client_id generate-client-response)
+                new-client-id (:client_id generate-client-response)
                 transaction-id (:txid generate-client-response)
                 client-secret (:client_secret generate-client-response)]
             ; Step 2: distribute it
             (log/info "Saving the new client for %s to S3 buckets: %s..." id s3_buckets)
-            (if-let [error (c/has-error (c/busy-map #(s3/save-client % id client-id client-secret)
+            (if-let [error (c/has-error (c/busy-map #(s3/save-client % id new-client-id client-secret)
                                                     s3_buckets))]
               (do
                 (log/debug "Could not save client to bucket: %s" (str error))
@@ -43,7 +43,7 @@
                 (log/debug "Saving last client rotation status for app %s..." id)
                 (storage/update-status storage-url id
                                                    {:last_client_rotation (c/format-date-time (time/now))
-                                                    :client_id            client-id}
+                                                    :client_id            new-client-id}
                                                    tokens)
                 (log/info "Successfully rotated client for app %s" id)))))
 
