@@ -11,7 +11,7 @@
 (defn sync-user
   "If neccessary, creates or deletes service users."
   [{:keys [id username s3_buckets last_synced last_modified scopes redirect_url is_client_confidential client_id] :as app}
-   {:keys [team_id active name]}                            ; the kio-app
+   {:keys [team_id active name subtitle]} ; kio app
    configuration
    tokens]
   {:pre [(not (str/blank? id))
@@ -47,6 +47,7 @@
                                                          {:id            username
                                                           :name          name
                                                           :owner         team_id
+                                                          :subtitle      subtitle
                                                           :client_config {:redirect_urls (if (str/blank? redirect_url)
                                                                                            []
                                                                                            [redirect_url])
