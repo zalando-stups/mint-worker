@@ -63,3 +63,16 @@
         (is (= (:has_problems args) true))
         (is (= (:s3_errors args) 1))))))
 
+(deftest use-correct-kio-app
+  (let [calls (atom {})]
+    (with-redefs [apps/list-apps (constantly (list test-kio-app))
+                  storage/list-apps (constantly (list test-app))
+                  storage/update-status (constantly nil)
+                  sync-app (track calls :sync)]
+      (run/run-sync test-config test-tokens)
+      (is (= (count (:sync @calls))
+             1))
+      (let [call-param (first (:sync @calls))
+            kio-app (third call-param)]
+        (is (= test-kio-app
+               kio-app))))))

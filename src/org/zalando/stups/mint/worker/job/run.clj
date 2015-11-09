@@ -28,16 +28,18 @@
         (log/debug "Starting new synchronisation run with %s..." configuration)
 
         (let [mint-apps (storage/list-apps storage-url tokens)
-              kio-apps (apps/list-apps kio-url tokens)]
+              kio-apps (apps/list-apps kio-url tokens)
+              ; put them into a map by id for faster lookup
+              kio-apps-by-id (reduce #(assoc %1 (:id %2) %2)
+                                     {}
+                                     kio-apps)]
           (log/debug "Found apps: %s ..." mint-apps)
           (doseq [mint-app mint-apps]
             (try
               (sync-app configuration
                         mint-app
-                        ; searching kio-app here
-                        (first (filter #(= (:id %)
-                                           (:id mint-app))
-                                       kio-apps))
+                        (get kio-apps-by-id
+                             (:id mint-app))
                         tokens)
               (storage/update-status storage-url (:id mint-app)
                                                  {:has_problems false
