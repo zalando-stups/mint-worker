@@ -6,7 +6,6 @@
                                                                 sequentially
                                                                 test-tokens
                                                                 test-config]]
-            [org.zalando.stups.mint.worker.external.apps :as apps]
             [org.zalando.stups.mint.worker.external.storage :as storage]
             [org.zalando.stups.mint.worker.external.s3 :as s3]
             [org.zalando.stups.mint.worker.job.sync-app :refer [sync-app]]
@@ -17,6 +16,10 @@
 (def test-app
   {:id        "kio"
    :s3_errors 0})
+
+(def test-kio-app
+  {:id "kio"
+   :active true})
 
 (def test-app-details
   {:id         "kio"
@@ -30,6 +33,7 @@
                   s3/writable? (track calls :writable)]
       (sync-app test-config
                 (assoc test-app :s3_errors 11)
+                test-kio-app
                 test-tokens)
       (is (empty? (:mint-config @calls)))
       (is (empty? (:writable @calls))))))
@@ -39,13 +43,11 @@
   (let [calls (atom {})]
     (with-redefs [s3/writable? (sequentially true false)
                   storage/get-app (constantly test-app-details)
-                  storage/update-status (track calls :update)
-                  apps/get-app (track calls :apps)]
+                  storage/update-status (track calls :update)]
       (sync-app test-config
                 test-app
+                test-kio-app
                 test-tokens)
-      ; did not try to fetch app from kio
-      (is (= 0 (count (:apps @calls))))
       ; updates status in storage
       (is (= 1 (count (:update @calls))))
       (let [call (first (:update @calls))
@@ -61,12 +63,12 @@
                  :active false}]
     (with-redefs [storage/get-app (constantly test-app-details)
                   s3/writable? (constantly true)
-                  apps/get-app (constantly kio-app)
                   sync-user (constantly test-app)
                   sync-client (track calls :client)
                   sync-password (track calls :password)]
       (sync-app test-config
                 test-app
+                (assoc test-kio-app :active false)
                 test-tokens)
       (is (= 0 (count (:client @calls))))
       (is (= 0 (count (:password @calls)))))))
@@ -79,12 +81,12 @@
                  :active true}]
     (with-redefs [storage/get-app (constantly test-app-details)
                   s3/writable? (constantly true)
-                  apps/get-app (constantly kio-app)
                   sync-user (constantly test-app-details)
                   sync-client (track calls :client)
                   sync-password (track calls :password)]
       (sync-app test-config
                 test-app
+                test-kio-app
                 test-tokens)
       (is (= 0 (count (:client @calls))))
       (is (= 1 (count (:password @calls)))))))
@@ -97,21 +99,21 @@
                  :active true}]
     (with-redefs [storage/get-app (constantly test-app-details)
                   s3/writable? (constantly true)
-                  apps/get-app (constantly kio-app)
                   sync-user (constantly test-app-details)
                   sync-client (track calls :client)
                   sync-password (track calls :password)]
       (sync-app test-config
                 test-app
+                test-kio-app
                 test-tokens)
       (is (= 1 (count (:client @calls))))
       (is (= 1 (count (:password @calls)))))))
 
 ; errors are handled by calling function
 (deftest do-not-handle-errors
-  (with-redefs [storage/get-app (constantly test-app-details)
-                s3/writable? (constantly true)
-                apps/get-app (throwing "ups")]
+  (with-redefs [storage/get-app (throwing "ups")
+                s3/writable? (constantly true)]
     (is (thrown? Exception (sync-app test-config
                                      test-app
+                                     test-kio-app
                                      test-tokens)))))

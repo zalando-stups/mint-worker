@@ -1,7 +1,6 @@
 (ns org.zalando.stups.mint.worker.job.sync-app
   (:require [org.zalando.stups.friboo.log :as log]
             [org.zalando.stups.friboo.config :as config]
-            [org.zalando.stups.mint.worker.external.apps :as apps]
             [org.zalando.stups.mint.worker.external.storage :as storage]
             [org.zalando.stups.mint.worker.external.s3 :as s3]
             [org.zalando.stups.mint.worker.job.sync-client :refer [sync-client]]
@@ -11,7 +10,7 @@
 
 (defn sync-app
   "Syncs the application with the given app-id."
-  [{:keys [max-s3-errors] :as configuration} {:keys [id s3_errors]} tokens]
+  [{:keys [max-s3-errors] :as configuration} {:keys [id s3_errors]} kio-app tokens]
   {:pre [(not (str/blank? id))]}
   (let [storage-url (config/require-config configuration :mint-storage-url)
         kio-url (config/require-config configuration :kio-url)]
@@ -22,6 +21,7 @@
             (let [app        (storage/get-app storage-url id tokens)
                   unwritable (doall (remove #(s3/writable? % id) (:s3_buckets app)))]
               (if (seq unwritable)
+                  ; unwritable buckets! skip sync.
                   (do
                     (log/debug "Skipping sync for app %s because there are unwritable S3 buckets: %s" id unwritable)
                     (storage/update-status storage-url id
@@ -29,9 +29,9 @@
                                                         :s3_errors (inc s3_errors)
                                                         :message (str "Unwritable S3 buckets: " (str unwritable))}
                                                        tokens))
-                  ; TODO handle 404 from kio for app
-                  (let [kio-app (apps/get-app kio-url id tokens)
-                        app (merge app (sync-user app kio-app configuration tokens))]
+                  ; writable buckets, presumably. do sync.
+                  ; TODO handle nil for kio-app
+                  (let [app (merge app (sync-user app kio-app configuration tokens))]
                     (log/debug "App has mint configuration %s" app)
                     (log/debug "App has kio configuration %s" kio-app)
                     (if (:active kio-app)
