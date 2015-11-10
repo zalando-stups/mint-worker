@@ -5,6 +5,7 @@
                                                                 third
                                                                 test-tokens
                                                                 test-config]]
+            [org.zalando.stups.mint.worker.external.apps :as apps]
             [org.zalando.stups.mint.worker.external.storage :as storage]
             [org.zalando.stups.mint.worker.job.sync-app :refer [sync-app]]
             [org.zalando.stups.mint.worker.job.run :as run]))
@@ -12,6 +13,10 @@
 (def test-app
   {:id "kio"
    :s3_errors 0})
+
+(def test-kio-app
+  {:id "kio"
+   :active true})
 
 ; test nothing bad happens without apps
 (deftest resiliency-nothing
@@ -27,7 +32,8 @@
 ; test s3 counter does not get increased after non-s3 exception
 (deftest resiliency-error-on-sync-app
   (let [calls (atom {})]
-    (with-redefs [storage/list-apps (constantly (list test-app))
+    (with-redefs [apps/list-apps (constantly (list test-kio-app))
+                  storage/list-apps (constantly (list test-app))
                   storage/update-status (track calls :update-status)
                   sync-app (throwing "error in sync-app")]
       (run/run-sync test-config test-tokens)
@@ -43,7 +49,8 @@
 ; test s3 counter gets increased after s3 exception
 (deftest resiliency-s3-error-on-sync-app
   (let [calls (atom {})]
-    (with-redefs [storage/list-apps (constantly (list test-app))
+    (with-redefs [apps/list-apps (constantly (list test-kio-app))
+                  storage/list-apps (constantly (list test-app))
                   storage/update-status (track calls :update-status)
                   sync-app (throwing "error in sync-app" {:type "S3Exception"})]
       (run/run-sync test-config test-tokens)
@@ -56,3 +63,16 @@
         (is (= (:has_problems args) true))
         (is (= (:s3_errors args) 1))))))
 
+(deftest use-correct-kio-app
+  (let [calls (atom {})]
+    (with-redefs [apps/list-apps (constantly (list test-kio-app))
+                  storage/list-apps (constantly (list test-app))
+                  storage/update-status (constantly nil)
+                  sync-app (track calls :sync)]
+      (run/run-sync test-config test-tokens)
+      (is (= (count (:sync @calls))
+             1))
+      (let [call-param (first (:sync @calls))
+            kio-app (third call-param)]
+        (is (= test-kio-app
+               kio-app))))))
