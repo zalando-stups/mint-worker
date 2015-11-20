@@ -33,7 +33,7 @@
   nil)
 
 (defn delete-app
-  "DELETE /apps/⁄{applicationId}"
+  "DELETE /apps/{applicationId}"
   [storage-url app-id tokens]
   {:pre [(not (str/blank? app-id))]}
   (client/delete (conpath storage-url "/apps/" app-id)

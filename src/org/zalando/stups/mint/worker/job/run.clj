@@ -41,8 +41,7 @@
                 (try
                   (sync-app configuration
                             mint-app
-                            (get kio-apps-by-id
-                                 app-id)
+                            kio-app
                             tokens)
                   (storage/update-status storage-url app-id
                                                      {:has_problems false

@@ -63,7 +63,7 @@
       (run/run-sync test-config test-tokens)
       (is (= (count (:update-status @calls))
              1))
-      ; should not call delete on error O.O
+      ; should not call delete on s3 error O.O
       (is (= 0 (count (:delete @calls))))
       (let [call (first (:update-status @calls))
             app (second call)
