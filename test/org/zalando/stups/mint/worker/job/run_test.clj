@@ -4,6 +4,7 @@
                                                                 track
                                                                 third
                                                                 test-tokens
+                                                                one?
                                                                 test-config]]
             [org.zalando.stups.mint.worker.external.apps :as apps]
             [org.zalando.stups.mint.worker.external.s3 :as s3]
@@ -40,10 +41,9 @@
                   storage/update-status (track calls :update-status)
                   sync-app (throwing "error in sync-app")]
       (run/run-sync test-config test-tokens)
-      (is (= (count (:update-status @calls))
-             1))
+      (is (one? (count (:update-status @calls))))
       ; should not call delete on error O.O
-      (is (= 0 (count (:delete @calls))))
+      (is (zero? (count (:delete @calls))))
       (let [call (first (:update-status @calls))
             app (second call)
             args (third call)]
@@ -61,10 +61,9 @@
                   s3/writable? (constantly false)
                   storage/update-status (track calls :update-status)]
       (run/run-sync test-config test-tokens)
-      (is (= (count (:update-status @calls))
-             1))
+      (is (one? (count (:update-status @calls))))
       ; should not call delete on s3 error O.O
-      (is (= 0 (count (:delete @calls))))
+      (is (zero? (count (:delete @calls))))
       (let [call (first (:update-status @calls))
             app (second call)
             args (third call)]
@@ -72,7 +71,7 @@
         (is (= (:has_problems args) true))
         ; https://github.com/zalando-stups/mint-worker/issues/17
         (is (= false (.contains (:message args) "LazySeq")))
-        (is (= (:s3_errors args) 1))))))
+        (is (one? (:s3_errors args)))))))
 
 (deftest use-correct-kio-app
   (let [calls (atom {})]
@@ -81,8 +80,7 @@
                   storage/update-status (constantly nil)
                   sync-app (track calls :sync)]
       (run/run-sync test-config test-tokens)
-      (is (= (count (:sync @calls))
-             1))
+      (is (one? (count (:sync @calls))))
       (let [call-param (first (:sync @calls))
             kio-app (third call-param)]
         (is (= test-kio-app
@@ -100,11 +98,11 @@
                   sync-app (track calls :sync)]
       (run/run-sync test-config test-tokens)
       ; should not call update
-      (is (= 0 (count (:update @calls))))
+      (is (zero? (count (:update @calls))))
       ; should not try to sync
-      (is (= 0 (count (:sync @calls))))
+      (is (zero? (count (:sync @calls))))
       ; should call delete
-      (is (= 1 (count (:delete @calls))))
+      (is (one? (count (:delete @calls))))
       ; should delete the correct app O.O
       (let [call-param (first (:delete @calls))
             app (second call-param)]
