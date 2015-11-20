@@ -64,6 +64,8 @@
             args (third call)]
         (is (= app (:id test-app)))
         (is (= (:has_problems args) true))
+        ; https://github.com/zalando-stups/mint-worker/issues/17
+        (is (= false (.contains (:message args) "LazySeq")))
         (is (= (:s3_errors args) 1))))))
 
 (deftest use-correct-kio-app
