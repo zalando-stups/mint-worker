@@ -48,25 +48,8 @@
         (is (= (:has_problems args) true))
         (is (= (:s3_errors args) nil))))))
 
-; test s3 counter gets increased after s3 exception
-(deftest resiliency-s3-error-on-sync-app
-  (let [calls (atom {})]
-    (with-redefs [apps/list-apps (constantly (list test-kio-app))
-                  storage/list-apps (constantly (list test-app))
-                  storage/update-status (track calls :update-status)
-                  sync-app (throwing "error in sync-app" {:type "S3Exception"})]
-      (run/run-sync test-config test-tokens)
-      (is (= (count (:update-status @calls))
-             1))
-      (let [call (first (:update-status @calls))
-            app (second call)
-            args (third call)]
-        (is (= app (:id test-app)))
-        (is (= (:has_problems args) true))
-        (is (= (:s3_errors args) 1))))))
-
 ; https://github.com/zalando-stups/mint-worker/issues/16
-(deftest correct-s3-error-behavior
+(deftest increase-s3-errors-when-unwritable-buckets
   (let [calls (atom {})]
     (with-redefs [apps/list-apps (constantly (list test-kio-app))
                   storage/list-apps (constantly (list test-app))
