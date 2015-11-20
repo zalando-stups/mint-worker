@@ -35,28 +35,35 @@
                                      kio-apps)]
           (log/debug "Found apps: %s ..." mint-apps)
           (doseq [mint-app mint-apps]
-            (try
-              (sync-app configuration
-                        mint-app
-                        (get kio-apps-by-id
-                             (:id mint-app))
-                        tokens)
-              (storage/update-status storage-url (:id mint-app)
-                                                 {:has_problems false
-                                                  :s3_errors 0
-                                                  :message ""}
-                                                 tokens)
-              (catch Exception e
-                (when (= 429 (:status  (ex-data e)))
-                  ; bubble up if we are rate limited
-                  (throw e))
-                (storage/update-status storage-url (:id mint-app)
-                                                   {:has_problems true
-                                                    :s3_errors (when (= "S3Exception" (:type (ex-data e)))
-                                                                 (inc (:s3_errors mint-app)))
-                                                    :message (str e)}
-                                                   tokens)
-                (log/warn "Could not synchronize app %s because %s." (:id mint-app) (str e))))))))
+            (let [app-id (:id mint-app)
+                  kio-app (get kio-apps-by-id app-id)]
+              (if (:active kio-app)
+                (try
+                  (sync-app configuration
+                            mint-app
+                            (get kio-apps-by-id
+                                 app-id)
+                            tokens)
+                  (storage/update-status storage-url app-id
+                                                     {:has_problems false
+                                                      :s3_errors 0
+                                                      :message ""}
+                                                     tokens)
+                  (catch Exception e
+                    (when (= 429 (:status  (ex-data e)))
+                      ; bubble up if we are rate limited
+                      (throw e))
+                    (storage/update-status storage-url app-id
+                                                       {:has_problems true
+                                                        :s3_errors (when (= "S3Exception" (:type (ex-data e)))
+                                                                     (inc (:s3_errors mint-app)))
+                                                        :message (str e)}
+                                                       tokens)
+                    (log/warn "Could not synchronize app %s because %s." app-id (str e))))
+                ; else delete
+                (do
+                  (storage/delete-app storage-url app-id tokens)
+                  (log/info "Deleted %s because it is inactive" app-id))))))))
     (catch Throwable e
       (if (= 429 (:status (ex-data e)))
         (do
