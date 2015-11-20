@@ -38,23 +38,21 @@
       (is (empty? (:mint-config @calls)))
       (is (empty? (:writable @calls))))))
 
-; it should increase s3_errors when at least one bucket is not writable
-(deftest inc-s3-errors-when-no-writable-bucket
+; it should throw when at least one bucket is not writable
+(deftest throw-when-no-writable-bucket
   (let [calls (atom {})]
     (with-redefs [s3/writable? (sequentially true false)
                   storage/get-app (constantly test-app-details)
                   storage/update-status (track calls :update)]
-      (sync-app test-config
-                test-app
-                test-kio-app
-                test-tokens)
-      ; updates status in storage
-      (is (= 1 (count (:update @calls))))
-      (let [call (first (:update @calls))
-            app (second call)
-            args (third call)]
-        (is (= app (:id test-app)))
-        (is (= 1 (:s3_errors args)))))))
+      (try
+        (sync-app test-config
+                  test-app
+                  test-kio-app
+                  test-tokens)
+        (is false)
+        (catch Exception ex
+          ; should not update status
+          (is (= 0 (count (:update @calls)))))))))
 
 ; it should skip credentials rotation when app is inactive
 (deftest skip-credentials-when-app-is-inactive
