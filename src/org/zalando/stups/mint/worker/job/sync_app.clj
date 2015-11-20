@@ -24,11 +24,10 @@
                   ; unwritable buckets! skip sync.
                   (do
                     (log/debug "Skipping sync for app %s because there are unwritable S3 buckets: %s" id unwritable)
-                    (storage/update-status storage-url id
-                                                       {:has_problems true
-                                                        :s3_errors (inc s3_errors)
-                                                        :message (str "Unwritable S3 buckets: " (str unwritable))}
-                                                       tokens))
+                    ; now throw exception so that it will be handled in run.clj
+                    (throw (s3/S3Exception (str "Unwritable S3 buckets: "
+                                                (pr-str unwritable))
+                                           {:s3_buckets unwritable})))
                   ; writable buckets, presumably. do sync.
                   ; TODO handle nil for kio-app
                   (let [app (merge app (sync-user app kio-app configuration tokens))]

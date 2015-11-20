@@ -6,12 +6,14 @@
                                                                 test-tokens
                                                                 test-config]]
             [org.zalando.stups.mint.worker.external.apps :as apps]
+            [org.zalando.stups.mint.worker.external.s3 :as s3]
             [org.zalando.stups.mint.worker.external.storage :as storage]
             [org.zalando.stups.mint.worker.job.sync-app :refer [sync-app]]
             [org.zalando.stups.mint.worker.job.run :as run]))
 
 (def test-app
   {:id "kio"
+   :s3_buckets ["test-bucket"]
    :s3_errors 0})
 
 (def test-kio-app
@@ -53,6 +55,24 @@
                   storage/list-apps (constantly (list test-app))
                   storage/update-status (track calls :update-status)
                   sync-app (throwing "error in sync-app" {:type "S3Exception"})]
+      (run/run-sync test-config test-tokens)
+      (is (= (count (:update-status @calls))
+             1))
+      (let [call (first (:update-status @calls))
+            app (second call)
+            args (third call)]
+        (is (= app (:id test-app)))
+        (is (= (:has_problems args) true))
+        (is (= (:s3_errors args) 1))))))
+
+; https://github.com/zalando-stups/mint-worker/issues/16
+(deftest correct-s3-error-behavior
+  (let [calls (atom {})]
+    (with-redefs [apps/list-apps (constantly (list test-kio-app))
+                  storage/list-apps (constantly (list test-app))
+                  storage/get-app (constantly test-app)
+                  s3/writable? (constantly false)
+                  storage/update-status (track calls :update-status)]
       (run/run-sync test-config test-tokens)
       (is (= (count (:update-status @calls))
              1))
