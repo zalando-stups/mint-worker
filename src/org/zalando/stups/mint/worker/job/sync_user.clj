@@ -34,7 +34,7 @@
               (time/after? (c/parse-date-time last_modified)
                            (c/parse-date-time last_synced)))
         (do
-          (log/info "Synchronizing app %s..." app)
+          (log/debug "Synchronizing app %s..." app)
           (let [scopes (c/map-scopes scopes configuration tokens)
                 scopes (update-in scopes [:owner-scope] conj
                                   {:realm  "services"       ; TODO hardcoded assumption of services realm and uid and no other services-owned scopes!! fix asap
@@ -59,7 +59,7 @@
 
             (when (and (not is_client_confidential)
                        (nil? client_id))
-              (log/info "Saving non-confidential client ID %s for app %s..." new-client-id id)
+              (log/debug "Saving non-confidential client ID %s for app %s..." new-client-id id)
               (when-let [error (c/has-error (c/busy-map #(s3/save-client % id new-client-id nil)
                                                         s3_buckets))]
                 (log/debug "Could not save client ID: %s" (str error))

@@ -40,6 +40,6 @@
                           (sync-client app configuration tokens)
                           (log/debug "Skipping client rotation for non-confidential client %s" id)))
                       (log/debug "Skipping password and client rotation for inactive app %s" id))
-                    (log/debug "Synced app %s." id))))
+                    (log/info "Synced app %s." id))))
             ; else
             (log/debug "Skipping sync for app %s because could not write to S3 repeatedly" id))))
