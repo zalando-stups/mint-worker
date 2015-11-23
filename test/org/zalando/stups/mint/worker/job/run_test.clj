@@ -78,9 +78,11 @@
     (with-redefs [apps/list-apps (constantly (list test-kio-app))
                   storage/list-apps (constantly (list test-app))
                   storage/update-status (constantly nil)
+                  storage/delete-app (track calls :delete)
                   sync-app (track calls :sync)]
       (run/run-sync test-config test-tokens)
       (is (one? (count (:sync @calls))))
+      (is (zero? (count (:delete @calls))))
       (let [call-param (first (:sync @calls))
             kio-app (third call-param)]
         (is (= test-kio-app
@@ -97,10 +99,11 @@
                   storage/delete-app (track calls :delete)
                   sync-app (track calls :sync)]
       (run/run-sync test-config test-tokens)
-      ; should not call update
+      ; should not update the status
       (is (zero? (count (:update @calls))))
-      ; should not try to sync
-      (is (zero? (count (:sync @calls))))
+      ; should try to sync one last time
+      ; in order to delete the service user
+      (is (one? (count (:sync @calls))))
       ; should call delete
       (is (one? (count (:delete @calls))))
       ; should delete the correct app O.O
