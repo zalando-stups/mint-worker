@@ -24,8 +24,8 @@
       (let [users (services/list-users service-user-url tokens)]
         (if (contains? users username)
           (do
-            (log/info "App %s is inactive; deleting user %s..." id username)
-            (services/delete-user service-user-url username tokens))
+            (services/delete-user service-user-url username tokens)
+            (log/info "App %s is inactive; deleted user %s..." id username))
           (log/debug "App %s is inactive and has no user." id))
         app)
 
