@@ -1,5 +1,5 @@
 (ns org.zalando.stups.mint.worker.external.s3
-  (:require [clojure.data.json :as json]
+  (:require [cheshire.core :as json]
             [clojure.java.io :as io]
             [org.zalando.stups.friboo.log :as log]
             [clojure.string :as str])
@@ -20,7 +20,7 @@
   "Stores an object in S3."
   [bucket-name path data]
   (let [bytes (-> data
-                 (json/write-str)
+                 (json/generate-string)
                  (.getBytes "UTF-8"))
         stream (ByteArrayInputStream. bytes)
         metadata (doto (ObjectMetadata.)
