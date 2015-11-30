@@ -22,10 +22,10 @@
                                     (time/hours 2))))
       (do
         ; Step 1: generate password
-        (log/info "Acquiring new password for %s..." username)
+        (log/debug "Acquiring new password for %s..." username)
         (let [{:keys [password txid]} (services/generate-new-password service-user-url username tokens)]
           ; Step 2: distribute it
-          (log/info "Saving the new password for %s to S3 buckets: %s..." id s3_buckets)
+          (log/debug "Saving the new password for %s to S3 buckets: %s..." id s3_buckets)
           (if-let [error (c/has-error (c/busy-map #(s3/save-user % id username password)
                                                   s3_buckets))]
             (do

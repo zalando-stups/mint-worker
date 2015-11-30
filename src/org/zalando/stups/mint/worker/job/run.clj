@@ -60,7 +60,7 @@
     (catch Throwable e
       (if (= 429 (:status (ex-data e)))
         (do
-          (log/warn "We got rate limited; pausing activities for the next 90 seconds.")
+          (log/info "We got rate limited; pausing activities for the next 90 seconds.")
           (reset! rate-limited-until (time/plus (time/now) (time/seconds 90))))
         (log/error e "Could not synchronize apps because %s." (str e))))))
 

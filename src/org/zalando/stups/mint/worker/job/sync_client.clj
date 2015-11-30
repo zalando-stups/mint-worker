@@ -22,13 +22,13 @@
                                     (time/months 1))))
         (do
           ; Step 1: generate password
-          (log/info "Acquiring a new client for app %s..." id)
+          (log/debug "Acquiring a new client for app %s..." id)
           (let [generate-client-response (services/generate-new-client service-user-url username client_id tokens)
                 new-client-id (:client_id generate-client-response)
                 transaction-id (:txid generate-client-response)
                 client-secret (:client_secret generate-client-response)]
             ; Step 2: distribute it
-            (log/info "Saving the new client for %s to S3 buckets: %s..." id s3_buckets)
+            (log/debug "Saving the new client for %s to S3 buckets: %s..." id s3_buckets)
             (if-let [error (c/has-error (c/busy-map #(s3/save-client % id new-client-id client-secret)
                                                     s3_buckets))]
               (do
