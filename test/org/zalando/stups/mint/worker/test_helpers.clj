@@ -45,3 +45,8 @@
             (nth args (if (> @calls limit)
                         limit
                         @calls)))))))
+
+(defmacro one?
+  "Just as zero?, but with one. Disclaimer: Only ints and bigints, no floats."
+  [n]
+  `(= 1 ~n))

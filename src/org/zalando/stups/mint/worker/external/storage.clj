@@ -31,3 +31,10 @@
                  :form-params  body
                  :as           :json})
   nil)
+
+(defn delete-app
+  "DELETE /apps/{applicationId}"
+  [storage-url app-id tokens]
+  {:pre [(not (str/blank? app-id))]}
+  (client/delete (conpath storage-url "/apps/" app-id)
+                 {:oauth-token (oauth2/access-token :mint-storage-rw-api tokens)}))
