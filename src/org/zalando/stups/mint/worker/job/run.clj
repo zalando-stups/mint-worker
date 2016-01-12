@@ -40,7 +40,7 @@
           (doseq [mint-app mint-apps]
             (let [app-id (:id mint-app)
                   kio-app (get kio-apps-by-id app-id)]
-              (when (when etcd-lock-url (etcd/refresh-lock etcd-lock-url worker-id 600))
+              (when (or (not etcd-lock-url) (etcd/refresh-lock etcd-lock-url worker-id 600))
               (try
                 (sync-app configuration
                           mint-app
