@@ -31,6 +31,8 @@ JOBS_SERVICE_USER_URL   | yes        |                         | URL to Service 
 JOBS_MINT_STORAGE_URL   | yes        |                         | URL to Mint storage
 JOBS_ESSENTIALS_URL     | yes        |                         | URL of [essentials](https://github.com/zalando-stups/essentials). Used to verify scopes.
 JOBS_MAX_S3_ERRORS      | no         | 10                      | At which point mint-worker pauses password/client rotation for applications
+JOBS_ETCD_LOCK_URL      | no         |                         | etcd key URL for locking
+JOBS_ETCD_LOCK_TTL      | no         | 500                     | etcd TTL for locking
 
 Example:
 

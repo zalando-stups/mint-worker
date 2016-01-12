@@ -13,7 +13,8 @@
   {:jobs-cpu-count        1
    :jobs-every-ms         10000
    :jobs-initial-delay-ms 1000
-   :jobs-max-s3-errors    10})
+   :jobs-max-s3-errors    10
+   :jobs-etcd-lock-ttl    600})
 
 ; used to track rate limiting of service user api
 (def rate-limited-until (atom (time/epoch)))
@@ -28,7 +29,8 @@
                        @rate-limited-until)
       (let [storage-url (config/require-config configuration :mint-storage-url)
             kio-url (config/require-config configuration :kio-url)
-            etcd-lock-url (:etcd-lock-url configuration)]
+            etcd-lock-url (:etcd-lock-url configuration)
+            etcd-lock-ttl (:etcd-lock-ttl configuration)]
         (log/info "Starting new synchronisation run with worker ID %s and config %s.." worker-id configuration)
 
         (let [mint-apps (storage/list-apps storage-url tokens)
@@ -41,7 +43,7 @@
           (doseq [mint-app mint-apps]
             (let [app-id (:id mint-app)
                   kio-app (get kio-apps-by-id app-id)]
-              (when (or (not etcd-lock-url) (etcd/refresh-lock etcd-lock-url worker-id 600))
+              (when (or (not etcd-lock-url) (etcd/refresh-lock etcd-lock-url worker-id etcd-lock-ttl))
               (try
                 (sync-app configuration
                           mint-app
