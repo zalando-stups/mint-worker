@@ -6,6 +6,7 @@
   "https://coreos.com/etcd/docs/latest/api.html#atomic-compare-and-swap"
   [etcd-lock-url value ttl]
   (try
+     ; try "compare and swap" (last value must match current value)
      (let [result (:body (client/put etcd-lock-url
                    {:content-type :json
                     :query-params {:prevValue value}
@@ -15,6 +16,7 @@
           true)
      (catch Exception e
        (try
+       ; fallback: try setting a new value
        (let [result (:body (client/put etcd-lock-url
                    {:content-type :json
                     :query-params {:prevExist false}
@@ -23,5 +25,5 @@
             (log/debug "etcd returned %s" result)
             true)
        (catch Exception e
-              (log/info "Failed to acquire/refresh lock %s" value)
+              (log/info "Failed to acquire/refresh lock for %s" value)
               false)))))

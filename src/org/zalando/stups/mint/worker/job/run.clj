@@ -18,6 +18,8 @@
 ; used to track rate limiting of service user api
 (def rate-limited-until (atom (time/epoch)))
 
+(def worker-id (java.util.UUID/randomUUID))
+
 (defn run-sync
   "Creates and deletes applications, rotates and distributes their credentials."
   [configuration tokens]
@@ -26,9 +28,8 @@
                        @rate-limited-until)
       (let [storage-url (config/require-config configuration :mint-storage-url)
             kio-url (config/require-config configuration :kio-url)
-            etcd-lock-url (:etcd-lock-url configuration)
-            worker-id (java.util.UUID/randomUUID)]
-        (log/debug "Starting new synchronisation run with %s..." configuration)
+            etcd-lock-url (:etcd-lock-url configuration)]
+        (log/info "Starting new synchronisation run with worker ID %s and config %s.." worker-id configuration)
 
         (let [mint-apps (storage/list-apps storage-url tokens)
               kio-apps (apps/list-apps kio-url tokens)
