@@ -9,6 +9,7 @@
             [org.zalando.stups.mint.worker.external.apps :as apps]
             [org.zalando.stups.mint.worker.external.s3 :as s3]
             [org.zalando.stups.mint.worker.external.storage :as storage]
+            [org.zalando.stups.mint.worker.external.etcd :as etcd]
             [org.zalando.stups.mint.worker.job.sync-app :refer [sync-app]]
             [org.zalando.stups.mint.worker.job.run :as run]))
 
@@ -110,3 +111,24 @@
       (let [call-param (first (:delete @calls))
             app (second call-param)]
         (is (= (:id test-app) app))))))
+
+
+(deftest no-sync-when-locked
+  (let [calls (atom {})]
+    (with-redefs [apps/list-apps (constantly (list test-kio-app))
+                  storage/list-apps (constantly (list test-app))
+                  storage/update-status (track calls :update-status)
+                  etcd/refresh-lock (constantly false)
+                  sync-app (throwing "error in sync-app")]
+      (run/run-sync (merge test-config {:etcd-lock-url "someurl"}) test-tokens)
+      (is (zero? (count (:update-status @calls)))))))
+
+(deftest sync-when-not-locked
+  (let [calls (atom {})]
+    (with-redefs [apps/list-apps (constantly (list test-kio-app))
+                  storage/list-apps (constantly (list test-app))
+                  storage/update-status (track calls :update-status)
+                  etcd/refresh-lock (constantly true)
+                  sync-app (throwing "error in sync-app")]
+      (run/run-sync (merge test-config {:etcd-lock-url "someurl"}) test-tokens)
+      (is (one? (count (:update-status @calls)))))))
