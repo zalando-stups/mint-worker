@@ -44,7 +44,8 @@
 (deftest should-delete-if-inactive-with-user
   (let [test-kio-app (assoc test-kio-app :active false)
         calls (atom {})]
-    (with-redefs [services/list-users (constantly #{(:username test-app)})
+    (with-redefs [services/list-users (constantly [{:name "Some test application"
+                                                    :id (:username test-app)}])
                   services/delete-user (track calls :delete)
                   services/create-or-update-user (track calls :update)]
       (sync-user test-app

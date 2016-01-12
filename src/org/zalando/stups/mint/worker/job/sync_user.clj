@@ -21,8 +21,10 @@
 
     (if-not active
       ; inactive app, check if deletion is required
-      (let [users (services/list-users service-user-url tokens)]
-        (if (contains? users username)
+      (let [user-exists? (->> (services/list-users service-user-url tokens)
+                              (map :id)
+                              (set))]
+        (if (user-exists? username)
           (do
             (services/delete-user service-user-url username tokens)
             (log/info "App %s is inactive; deleted user %s..." id username))
