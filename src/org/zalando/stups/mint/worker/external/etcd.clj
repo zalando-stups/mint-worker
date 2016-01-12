@@ -7,6 +7,7 @@
   [etcd-lock-url value ttl]
   (try
      ; try "compare and swap" (last value must match current value)
+     ; this call will fail (HTTP status != 2xx) if the old value is different or if no value exists!
      (let [result (:body (client/put etcd-lock-url
                    {:content-type :json
                     :query-params {:prevValue value}
@@ -17,6 +18,7 @@
      (catch Exception e
        (try
        ; fallback: try setting a new value
+       ; this call will fail (HTTP status != 2xx) if a value already exists (somebody else acquired the lock)
        (let [result (:body (client/put etcd-lock-url
                    {:content-type :json
                     :query-params {:prevExist false}
