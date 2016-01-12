@@ -5,6 +5,7 @@
             [org.zalando.stups.mint.worker.job.sync-app :refer [sync-app]]
             [org.zalando.stups.mint.worker.external.storage :as storage]
             [org.zalando.stups.mint.worker.external.apps :as apps]
+            [org.zalando.stups.mint.worker.external.etcd :as etcd]
             [overtone.at-at :refer [every]]
             [clj-time.core :as time]))
 
@@ -24,7 +25,9 @@
     (when (time/after? (time/now)
                        @rate-limited-until)
       (let [storage-url (config/require-config configuration :mint-storage-url)
-            kio-url (config/require-config configuration :kio-url)]
+            kio-url (config/require-config configuration :kio-url)
+            etcd-lock-url (:etcd-lock-url configuration)
+            worker-id (java.util.UUID/randomUUID)]
         (log/debug "Starting new synchronisation run with %s..." configuration)
 
         (let [mint-apps (storage/list-apps storage-url tokens)
@@ -37,6 +40,7 @@
           (doseq [mint-app mint-apps]
             (let [app-id (:id mint-app)
                   kio-app (get kio-apps-by-id app-id)]
+              (when (when etcd-lock-url (etcd/refresh-lock etcd-lock-url worker-id 600))
               (try
                 (sync-app configuration
                           mint-app
@@ -62,7 +66,7 @@
                                                                    (inc (:s3_errors mint-app)))
                                                       :message (str e)}
                                                      tokens)
-                  (log/warn "Could not synchronize app %s because %s." app-id (str e)))))))))
+                  (log/warn "Could not synchronize app %s because %s." app-id (str e))))))))))
     (catch Throwable e
       (if (= 429 (:status (ex-data e)))
         (do
