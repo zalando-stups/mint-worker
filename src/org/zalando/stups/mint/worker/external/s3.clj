@@ -16,13 +16,11 @@
   `(ex-info ~msg (merge ~data {:type "S3Exception"})))
 
 (defn infer-region [bucket-name]
-  (reduce
-    (fn [acc region]
-      (if (.contains bucket-name (.getName region))
-        (Region/getRegion region)
-        acc))
-    nil
-    (Regions/values)))
+  (some->>
+    (Regions/values)
+    (filter #(-> bucket-name (.contains (-> % .getName))))
+    first
+    Region/getRegion))
 
 (defn put-string
   "Stores an object in S3."
