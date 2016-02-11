@@ -31,12 +31,12 @@
                       :as           :json})))
 
 (defn generate-new-password
-  [service-user-url username tokens]
+  [service-user-url username body tokens]
   {:pre [(not (str/blank? username))]}
   (:body (client/post (conpath service-user-url "/services/" username "/password")
                       {:oauth-token  (oauth2/access-token :service-user-rw-api tokens)
                        :content-type :json
-                       :form-params  {}
+                       :form-params  (or body {})
                        :as           :json})))
 
 (defn commit-password
@@ -50,14 +50,14 @@
                       :as           :json})))
 
 (defn generate-new-client
-  [service-user-url username {:keys client_id client_secret transaction_id} tokens]
+  [service-user-url username {:keys client_id client_secret txid} tokens]
   {:pre [(not (str/blank? username))
          (not (str/blank? client-id))]}
   (:body (client/post (conpath service-user-url "/services/" username "/client")
                       {:oauth-token  (oauth2/access-token :service-user-rw-api tokens)
                        :content-type :json
                        :form-params  {:id username
-                                      :transaction_id transaction_id
+                                      :txid txid
                                       :client_secret client_secret
                                       :client_id client_id}
                        :as           :json})))

@@ -70,12 +70,13 @@
                                                                  username
                                                                  body
                                                                  tokens)
-                new-client-id (:client_id response)
-                ; create in shadow with new client id
-                shadow-response (services/create-or-update-user shadow-user-url
-                                                                username
-                                                                (assoc body :client_id new-client-id)
-                                                                tokens)]
+                new-client-id (:client_id response)]
+            ; create in shadow
+            (log/debug "Creating/updating app %s in shadow..." username)
+            (services/create-or-update-user shadow-user-url
+                                            username
+                                            (assoc body :client_id new-client-id)
+                                            tokens)
             (when (and (not is_client_confidential)
                        (nil? client_id))
               (log/debug "Saving non-confidential client ID %s for app %s..." new-client-id id)

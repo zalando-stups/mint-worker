@@ -36,7 +36,7 @@
             (services/generate-new-client shadow-user-url
                                           username
                                           {:client_id new-client-id
-                                           :transaction_id transaction-id
+                                           :txid transaction-id
                                            :client_secret client-secret}
                                           tokens)
             ; Step 3: distribute it
