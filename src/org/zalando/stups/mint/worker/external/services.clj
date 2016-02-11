@@ -50,9 +50,9 @@
                       :as           :json})))
 
 (defn generate-new-client
-  [service-user-url username {:keys client_id client_secret txid} tokens]
+  [service-user-url username {:keys [client_id client_secret txid]} tokens]
   {:pre [(not (str/blank? username))
-         (not (str/blank? client-id))]}
+         (not (str/blank? client_id))]}
   (:body (client/post (conpath service-user-url "/services/" username "/client")
                       {:oauth-token  (oauth2/access-token :service-user-rw-api tokens)
                        :content-type :json

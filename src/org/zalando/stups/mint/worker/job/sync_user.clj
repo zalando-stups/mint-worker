@@ -70,7 +70,7 @@
                                                                  username
                                                                  body
                                                                  tokens)
-                new-client-id (:client_id response)]
+                new-client-id (:client_id primary-response)]
             ; create in shadow
             (log/debug "Creating/updating app %s in shadow..." username)
             (services/create-or-update-user shadow-user-url

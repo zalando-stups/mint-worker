@@ -1,13 +1,14 @@
 (ns org.zalando.stups.mint.worker.test-helpers)
 
 (def test-config
-  {:storage-url      "https://localhost"
-   :kio-url          "https://localhost"
-   :service-user-url "https://localhost"
-   :mint-storage-url "https://localhost"
-   :essentials-url   "https://localhost"
-   :prefix           "stups_"
-   :max-s3-errors    10})
+  {:storage-url             "https://localhost"
+   :kio-url                 "https://localhost"
+   :service-user-url        "https://localhost"
+   :shadow-service-user-url "https://localhost"
+   :mint-storage-url        "https://localhost"
+   :essentials-url          "https://localhost"
+   :prefix                  "stups_"
+   :max-s3-errors           10})
 
 (def test-tokens
   {})
