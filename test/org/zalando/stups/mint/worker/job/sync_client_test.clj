@@ -4,6 +4,7 @@
             [org.zalando.stups.mint.worker.job.common :as c]
             [org.zalando.stups.mint.worker.test-helpers :refer [test-tokens
                                                                 test-config
+                                                                call-info
                                                                 sequentially
                                                                 throwing
                                                                 third
@@ -43,7 +44,9 @@
                                              (time/weeks 5)))
         test-app (assoc test-app :last_client_rotation past)
         calls (atom {})]
-    (with-redefs [services/generate-new-client (constantly test-response)
+    (with-redefs [services/generate-new-client (comp
+                                                 (constantly test-response)
+                                                 (track calls :generate))
                   s3/save-client (constantly (PutObjectResult.))
                   services/commit-client (track calls :commit)
                   storage/update-status (track calls :update)]
@@ -51,7 +54,43 @@
                    test-config
                    test-tokens)
       ; 2 => one for primary, one for secondary
+      (is (= 2 (count (:generate @calls))))
+      (is (= (:service-user-url test-config)
+             (-> (:generate @calls)
+                 (call-info 0)
+                 :url)))
+      (is (= (:shadow-service-user-url test-config)
+             (-> (:generate @calls)
+                 (call-info 1)
+                 :url)))
+      ; call to secondary must contain client_id, client_secret and txid
+      (is (= (:client_id test-response)
+             (-> (:generate @calls)
+                 (call-info 1)
+                 :args
+                 (nth 1)
+                 :client_id)))
+      (is (= (:client_secret test-response)
+             (-> (:generate @calls)
+                 (call-info 1)
+                 :args
+                 (nth 1)
+                 :client_secret)))
+      (is (= (:txid test-response)
+             (-> (:generate @calls)
+                 (call-info 1)
+                 :args
+                 (nth 1)
+                 :txid)))
       (is (= 2 (count (:commit @calls))))
+      (is (= (:service-user-url test-config)
+             (-> (:commit @calls)
+                 (call-info 0)
+                 :url)))
+      (is (= (:shadow-service-user-url test-config)
+             (-> (:commit @calls)
+                 (call-info 1)
+                 :url)))
       (is (= 1 (count (:update @calls))))
       (let [args (first (:commit @calls))]
         ; signature: storage-url username transaction-id
