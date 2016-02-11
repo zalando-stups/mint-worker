@@ -45,7 +45,8 @@
       (sync-password test-app
                      test-config
                      test-tokens)
-      (is (= 1 (count (:commit @calls))))
+      ; 2 => one for primary, one for secondary
+      (is (= 2 (count (:commit @calls))))
       (is (= 1 (count (:update @calls))))
       (let [args (first (:commit @calls))]
         ; signature: url user txid
@@ -67,7 +68,8 @@
       (sync-password test-app
                      test-config
                      test-tokens)
-      (is (= 1 (count (:commit @calls))))
+      ; 2 => one for primary, one for secondary
+      (is (= 2 (count (:commit @calls))))
       (is (= 1 (count (:update @calls)))))))
 
 ; should throw if a bucket is not writable

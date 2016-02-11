@@ -52,7 +52,8 @@
                  test-kio-app
                  test-config
                  test-tokens)
-      (is (= 1 (count (:delete @calls))))
+      ; 2 => one for primary, one for secondary
+      (is (= 2 (count (:delete @calls))))
       (is (= 0 (count (:update @calls))))
       (let [args (first (:delete @calls))]
         (is (= (second args)
@@ -97,7 +98,8 @@
                                     test-config
                                     test-tokens)]
         (is (:client_id returned-app))
-        (is (= 1 (count (:update-user @calls))))
+        ; 2 => one for primary, one for secondary
+        (is (= 2 (count (:update-user @calls))))
         (is (= 1 (count (:update-status @calls))))))))
 
 ; should sync client_id if not confidential and not available
