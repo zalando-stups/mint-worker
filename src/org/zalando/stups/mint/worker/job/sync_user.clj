@@ -17,18 +17,27 @@
   {:pre [(not (str/blank? id))
          (seq s3_buckets)]}
   (let [storage-url (config/require-config configuration :mint-storage-url)
+        shadow-user-url (config/require-config configuration :shadow-service-user-url)
         service-user-url (config/require-config configuration :service-user-url)]
 
     (if-not active
       ; inactive app, check if deletion is required
       (let [user-exists? (->> (services/list-users service-user-url tokens)
                               (map :id)
-                              (set))]
+                              (set))
+            shadow-user-exists? (->> (services/list-users shadow-user-url tokens)
+                                     (map :id)
+                                     (set))]
         (if (user-exists? username)
           (do
             (services/delete-user service-user-url username tokens)
-            (log/info "App %s is inactive; deleted user %s..." id username))
-          (log/debug "App %s is inactive and has no user." id))
+            (log/info "App %s is inactive; deleted user %s from primary." id username))
+          (log/debug "App %s is inactive and has no user in primary." id))
+        (if (shadow-user-exists? username)
+          (do
+            (services/delete-user shadow-user-url username tokens)
+            (log/info "App %s is inactive; deleted user %s from shadow." id username))
+          (log/debug "App %s is inactive and has no user in shadow." id))
         app)
 
       ; active app, check for last sync
