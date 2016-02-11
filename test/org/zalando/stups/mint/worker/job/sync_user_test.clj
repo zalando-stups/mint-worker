@@ -3,6 +3,7 @@
             [org.zalando.stups.mint.worker.job.sync-user :refer [sync-user]]
             [org.zalando.stups.mint.worker.test-helpers :refer [test-tokens
                                                                 test-config
+                                                                call-info
                                                                 throwing
                                                                 sequentially
                                                                 track]]
@@ -54,6 +55,14 @@
                  test-tokens)
       ; 2 => one for primary, one for secondary
       (is (= 2 (count (:delete @calls))))
+      (is (= (:service-user-url test-config)
+             (-> (:delete @calls)
+                 (call-info 0)
+                 :url)))
+      (is (= (:shadow-service-user-url test-config)
+             (-> (:delete @calls)
+                 (call-info 1)
+                 :url)))
       (is (= 0 (count (:update @calls))))
       (let [args (first (:delete @calls))]
         (is (= (second args)
@@ -100,6 +109,21 @@
         (is (:client_id returned-app))
         ; 2 => one for primary, one for secondary
         (is (= 2 (count (:update-user @calls))))
+        (is (= (:service-user-url test-config)
+               (-> (:update-user @calls)
+                   (call-info 0)
+                   :url)))
+        (is (= (:shadow-service-user-url test-config)
+               (-> (:update-user @calls)
+                   (call-info 1)
+                   :url)))
+        ; call to shadow must also include client_id
+        (is (= (:client_id test-response)
+               (-> (:update-user @calls)
+                   (call-info 1)
+                   :args
+                   (nth 1)
+                   :client_id)))
         (is (= 1 (count (:update-status @calls))))))))
 
 ; should sync client_id if not confidential and not available

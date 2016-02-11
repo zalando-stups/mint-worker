@@ -1,17 +1,27 @@
 (ns org.zalando.stups.mint.worker.test-helpers)
 
 (def test-config
-  {:storage-url             "https://localhost"
-   :kio-url                 "https://localhost"
-   :service-user-url        "https://localhost"
-   :shadow-service-user-url "https://localhost"
-   :mint-storage-url        "https://localhost"
-   :essentials-url          "https://localhost"
+  {:storage-url             "storage-url"
+   :kio-url                 "kio-url"
+   :service-user-url        "service-user-url"
+   :shadow-service-user-url "shadow-user-url"
+   :mint-storage-url        "mint-url"
+   :essentials-url          "essentials-url"
    :prefix                  "stups_"
    :max-s3-errors           10})
 
 (def test-tokens
   {})
+
+(defn call-info
+  [calls call-id]
+  (let [call (nth calls call-id)
+        url (first call)
+        token (last call)
+        args (rest call)]
+    {:url url
+     :token token
+     :args args}))
 
 (defn track
   "Returns a function that conjs its arguments into the atom"
