@@ -4,6 +4,7 @@
             [org.zalando.stups.mint.worker.job.sync-password :refer [sync-password]]
             [org.zalando.stups.mint.worker.test-helpers :refer [test-tokens
                                                                 test-config
+                                                                call-info
                                                                 track
                                                                 third
                                                                 sequentially
@@ -38,7 +39,9 @@
 ; should not skip if last rotation never happened
 (deftest should-not-skip-if-never-rotated
   (let [calls (atom {})]
-    (with-redefs [services/generate-new-password (constantly test-response)
+    (with-redefs [services/generate-new-password (comp
+                                                   (constantly test-response)
+                                                   (track calls :generate))
                   s3/save-user (constantly (PutObjectResult.))
                   services/commit-password (track calls :commit)
                   storage/update-status (track calls :update)]
@@ -46,6 +49,28 @@
                      test-config
                      test-tokens)
       ; 2 => one for primary, one for secondary
+      (is (= 2 (count (:generate @calls))))
+      (is (= (:service-user-url test-config)
+             (-> (:generate @calls)
+                 (call-info 0)
+                 :url)))
+      (is (= (:shadow-service-user-url test-config)
+             (-> (:generate @calls)
+                 (call-info 1)
+                 :url)))
+      ; call to secondary must contain txid and password
+      (is (= (:txid test-response)
+             (-> (:generate @calls)
+                 (call-info 1)
+                 :args
+                 (nth 1)
+                 :txid)))
+      (is (= (:password test-response)
+             (-> (:generate @calls)
+                 (call-info 1)
+                 :args
+                 (nth 1)
+                 :password)))
       (is (= 2 (count (:commit @calls))))
       (is (= 1 (count (:update @calls))))
       (let [args (first (:commit @calls))]
