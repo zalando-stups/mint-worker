@@ -28,11 +28,13 @@
             shadow-user-exists? (->> (services/list-users shadow-user-url tokens)
                                      (map :id)
                                      (set))]
+        ; delete from primary
         (if (user-exists? username)
           (do
             (services/delete-user service-user-url username tokens)
             (log/info "App %s is inactive; deleted user %s from primary." id username))
           (log/debug "App %s is inactive and has no user in primary." id))
+        ; delete from shadow
         (if (shadow-user-exists? username)
           (do
             (services/delete-user shadow-user-url username tokens)
@@ -53,21 +55,27 @@
                 scopes (update-in scopes [:owner-scope] conj
                                   {:realm  "employees"       ; TODO hardcoded assumption that we currently have no employee scopes!! fix asap
                                    :scopes ["uid"]})
-                response (services/create-or-update-user service-user-url
-                                                         username
-                                                         {:id            username
-                                                          :name          name
-                                                          :owner         team_id
-                                                          :subtitle      subtitle
-                                                          :client_config {:redirect_urls (if (str/blank? redirect_url)
-                                                                                           []
-                                                                                           [redirect_url])
-                                                                          :scopes        (:owner-scope scopes)
-                                                                          :confidential  is_client_confidential}
-                                                          :user_config   {:scopes (:application-scope scopes)}}
-                                                         tokens)
-                new-client-id (:client_id response)]
-
+                body   {:id            username
+                        :name          name
+                        :owner         team_id
+                        :subtitle      subtitle
+                        :client_config {:redirect_urls (if (str/blank? redirect_url)
+                                                         []
+                                                         [redirect_url])
+                                        :scopes        (:owner-scope scopes)
+                                        :confidential  is_client_confidential}
+                        :user_config   {:scopes (:application-scope scopes)}}
+                ; create in primary
+                primary-response (services/create-or-update-user service-user-url
+                                                                 username
+                                                                 body
+                                                                 tokens)
+                new-client-id (:client_id response)
+                ; create in shadow with new client id
+                shadow-response (services/create-or-update-user shadow-user-url
+                                                                username
+                                                                (assoc body :client_id new-client-id)
+                                                                tokens)]
             (when (and (not is_client_confidential)
                        (nil? client_id))
               (log/debug "Saving non-confidential client ID %s for app %s..." new-client-id id)
