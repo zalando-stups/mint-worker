@@ -15,6 +15,7 @@
          (seq s3_buckets)
          (not (str/blank? username))]}
   (let [service-user-url (config/require-config configuration :service-user-url)
+        shadow-user-url (config/require-config configuration :shadow-service-user-url)
         storage-url (config/require-config configuration :mint-storage-url)]
     (if (or (nil? last_client_rotation)
             (time/after? (time/now)
@@ -22,12 +23,23 @@
                                     (time/months 1))))
         (do
           ; Step 1: generate password
-          (log/debug "Acquiring a new client for app %s..." id)
-          (let [generate-client-response (services/generate-new-client service-user-url username client_id tokens)
+          (log/debug "Acquiring a new client for app %s in primary..." id)
+          (let [generate-client-response (services/generate-new-client service-user-url
+                                                                       username
+                                                                       {:client_id client_id}
+                                                                       tokens)
                 new-client-id (:client_id generate-client-response)
                 transaction-id (:txid generate-client-response)
                 client-secret (:client_secret generate-client-response)]
-            ; Step 2: distribute it
+            ; Step 2: set in shadow service user api
+            (log/debug "Setting new client for app %s in shadow..." id)
+            (services/generate-new-client shadow-user-url
+                                          username
+                                          {:client_id new-client-id
+                                           :transaction_id transaction-id
+                                           :client_secret client-secret}
+                                          tokens)
+            ; Step 3: distribute it
             (log/debug "Saving the new client for %s to S3 buckets: %s..." id s3_buckets)
             (if-let [error (c/has-error (c/busy-map #(s3/save-client % id new-client-id client-secret)
                                                     s3_buckets))]
@@ -35,11 +47,14 @@
                 (log/debug "Could not save client to bucket: %s" (str error))
                 (throw error))
               (do
-                ; Step 3: if successful distributed, commit it
-                (log/debug "Committing new secret for app %s with transaction %s..." id transaction-id)
+                ; Step 4: if successful distributed, commit it
+                (log/debug "Committing new secret for app %s with transaction %s in primary..." id transaction-id)
                 (services/commit-client service-user-url username transaction-id tokens)
 
-                ; Step 4: store last rotation time (now)
+                (log/debug "Committing new secret for app %s with transaction %s in shadow..." id transaction-id)
+                (services/commit-client shadow-user-url username transaction-id tokens)
+
+                ; Step 5: store last rotation time (now)
                 (log/debug "Saving last client rotation status for app %s..." id)
                 (storage/update-status storage-url id
                                                    {:last_client_rotation (c/format-date-time (time/now))
