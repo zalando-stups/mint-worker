@@ -23,16 +23,17 @@ Configuration is provided via environment variables during start.
 
 ### Mint Worker
 
-Variable                | Mandatory? | Default                 | Description
------------------------ | ---------- | ----------------------- | -----------
-OAUTH2_ACCESS_TOKEN_URL | yes        |                         | URL of the `/access_token` endpoint of the authorization server (to retrieve OAuth tokens)
-JOBS_KIO_URL            | yes        |                         | URL to [Kio](https://github.com/zalando-stups/kio). Used to verify applications.
-JOBS_SERVICE_USER_URL   | yes        |                         | URL to Service User API
-JOBS_MINT_STORAGE_URL   | yes        |                         | URL to Mint storage
-JOBS_ESSENTIALS_URL     | yes        |                         | URL of [essentials](https://github.com/zalando-stups/essentials). Used to verify scopes.
-JOBS_MAX_S3_ERRORS      | no         | 10                      | At which point mint-worker pauses password/client rotation for applications
-JOBS_ETCD_LOCK_URL      | no         |                         | etcd key URL for locking
-JOBS_ETCD_LOCK_TTL      | no         | 500                     | etcd TTL for locking
+Variable                     | Mandatory? | Default                 | Description
+-----------------------      | ---------- | ----------------------- | -----------
+OAUTH2_ACCESS_TOKEN_URL      | yes        |                         | URL of the `/access_token` endpoint of the authorization server (to retrieve OAuth tokens)
+JOBS_KIO_URL                 | yes        |                         | URL to [Kio](https://github.com/zalando-stups/kio). Used to verify applications.
+JOBS_SERVICE_USER_URL        | yes        |                         | URL to Service User API
+JOBS_SHADOW_SERVICE_USER_URL | yes        |                         | URL to shadow Service User API
+JOBS_MINT_STORAGE_URL        | yes        |                         | URL to Mint storage
+JOBS_ESSENTIALS_URL          | yes        |                         | URL of [essentials](https://github.com/zalando-stups/essentials). Used to verify scopes.
+JOBS_MAX_S3_ERRORS           | no         | 10                      | At which point mint-worker pauses password/client rotation for applications
+JOBS_ETCD_LOCK_URL           | no         |                         | etcd key URL for locking
+JOBS_ETCD_LOCK_TTL           | no         | 500                     | etcd TTL for locking
 
 Example:
 
