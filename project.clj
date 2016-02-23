@@ -8,7 +8,7 @@
   :min-lein-version "2.0.0"
 
   :dependencies [[org.clojure/clojure "1.7.0"]
-                 [org.zalando.stups/friboo "1.5.3"]]
+                 [org.zalando.stups/friboo "1.6.0"]]
 
   :main ^:skip-aot org.zalando.stups.mint.worker.core
   :uberjar-name "mint-worker.jar"
