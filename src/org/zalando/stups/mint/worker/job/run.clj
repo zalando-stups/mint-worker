@@ -21,6 +21,9 @@
 
 (def worker-id (java.util.UUID/randomUUID))
 
+(defn s3-exception? [e]
+  (= "S3Exception" (:type (ex-data e))))
+
 (defn run-sync
   "Creates and deletes applications, rotates and distributes their credentials."
   [configuration tokens]
@@ -65,11 +68,13 @@
                     (throw e))
                   (storage/update-status storage-url app-id
                                                      {:has_problems true
-                                                      :s3_errors (when (= "S3Exception" (:type (ex-data e)))
-                                                                   (inc (:s3_errors mint-app)))
-                                                      :message (str e)}
+                                                      :s3_errors    (when (s3-exception? e)
+                                                                      (inc (:s3_errors mint-app)))
+                                                      :message      (str e)}
                                                      tokens)
-                  (log/warn "Could not synchronize app %s because %s." app-id (str e))))))))))
+                  (if (s3-exception? e)
+                    (log/info "Could not synchronize app %s because %s." app-id (str e))
+                    (log/warn "Could not synchronize app %s because %s." app-id (str e)))))))))))
     (catch Throwable e
       (if (= 429 (:status (ex-data e)))
         (do

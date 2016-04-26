@@ -8,26 +8,37 @@
            (com.amazonaws.services.s3 AmazonS3Client)
            (com.amazonaws.services.s3.model PutObjectRequest
                                             ObjectMetadata
-                                            CannedAccessControlList)))
-
-(def s3client (AmazonS3Client.))
+                                            CannedAccessControlList)
+           (com.amazonaws.regions Regions Region)))
 
 (defmacro S3Exception
   [msg data]
   `(ex-info ~msg (merge ~data {:type "S3Exception"})))
 
+(defn infer-region [bucket-name]
+  (some->>
+    (Regions/values)
+    (filter #(-> bucket-name (.contains (-> % .getName))))
+    first
+    Region/getRegion))
+
 (defn put-string
   "Stores an object in S3."
   [bucket-name path data]
-  (let [bytes (-> data
+  (let [region   (infer-region bucket-name)
+        s3client (AmazonS3Client.)
+        bytes    (-> data
                  (json/generate-string)
                  (.getBytes "UTF-8"))
-        stream (ByteArrayInputStream. bytes)
+        stream   (ByteArrayInputStream. bytes)
         metadata (doto (ObjectMetadata.)
                    (.setContentLength (count bytes))
                    (.setContentType "application/json"))
-        request (doto (PutObjectRequest. bucket-name path stream metadata)
+        request  (doto (PutObjectRequest. bucket-name path stream metadata)
                   (.withCannedAcl CannedAccessControlList/BucketOwnerFullControl))]
+    ; to get rid of the S3V4AuthErrorRetryStrategy warnings
+    (when region
+      (.setRegion s3client region))
     (.putObject s3client request)))
 
 (defn writable?

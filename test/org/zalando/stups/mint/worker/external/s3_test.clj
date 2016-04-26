@@ -1,7 +1,8 @@
 (ns org.zalando.stups.mint.worker.external.s3-test
   (:require [clojure.test :refer :all]
             [org.zalando.stups.mint.worker.external.s3 :as s3])
-  (:import (com.amazonaws AmazonServiceException)))
+  (:import (com.amazonaws AmazonServiceException)
+           (com.amazonaws.regions Region Regions)))
 
 (defn mock-put-error
   [& args]
@@ -28,3 +29,10 @@
     (let [error (s3/save-user "bucket" "app" "name" "password")]
       (is (= (:type (ex-data error))
              "S3Exception")))))
+
+(deftest infer-ireland-region
+  (is (= (s3/infer-region "a-mint-bucket-in-eu-west-1")
+         (Region/getRegion (Regions/EU_WEST_1)))))
+
+(deftest infer-nil-region
+  (is (nil? (s3/infer-region "a-mint-bucket-with-no-region-hint"))))
