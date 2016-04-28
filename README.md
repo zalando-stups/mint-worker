@@ -1,4 +1,4 @@
-# mint
+# mint-worker
 
 [![Build Status](https://travis-ci.org/zalando-stups/mint-worker.svg?branch=master)](https://travis-ci.org/zalando-stups/mint-worker)
 [![Coverage Status](https://coveralls.io/repos/zalando-stups/mint-worker/badge.svg?branch=master&service=github)](https://coveralls.io/github/zalando-stups/mint-worker?branch=master)
