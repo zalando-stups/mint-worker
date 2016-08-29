@@ -7,7 +7,7 @@
                                                                 test-tokens
                                                                 test-config]]
             [org.zalando.stups.mint.worker.external.storage :as storage]
-            [org.zalando.stups.mint.worker.external.s3 :as s3]
+            [org.zalando.stups.mint.worker.external.bucket_storage :refer [writable?]]
             [org.zalando.stups.mint.worker.job.sync-app :refer [sync-app]]
             [org.zalando.stups.mint.worker.job.sync-client :refer [sync-client]]
             [org.zalando.stups.mint.worker.job.sync-user :refer [sync-user]]
@@ -30,8 +30,8 @@
 (deftest do-nothing-when-max-errors-exceeded
   (let [calls (atom {})]
     (with-redefs [storage/get-app (track calls :mint-config)
-                  s3/writable? (track calls :writable)]
-      (sync-app test-config
+                  writable? (track calls :writable)]
+      (sync-app nil test-config
                 (assoc test-app :s3_errors 11)
                 test-kio-app
                 test-tokens)
@@ -41,11 +41,11 @@
 ; it should throw when at least one bucket is not writable
 (deftest throw-when-no-writable-bucket
   (let [calls (atom {})]
-    (with-redefs [s3/writable? (sequentially true false)
+    (with-redefs [writable? (sequentially true false)
                   storage/get-app (constantly test-app-details)
                   storage/update-status (track calls :update)]
       (try
-        (sync-app test-config
+        (sync-app nil test-config
                   test-app
                   test-kio-app
                   test-tokens)
@@ -60,11 +60,11 @@
         kio-app {:id "kio"
                  :active false}]
     (with-redefs [storage/get-app (constantly test-app-details)
-                  s3/writable? (constantly true)
+                  writable? (constantly true)
                   sync-user (constantly test-app)
                   sync-client (track calls :client)
                   sync-password (track calls :password)]
-      (sync-app test-config
+      (sync-app nil test-config
                 test-app
                 (assoc test-kio-app :active false)
                 test-tokens)
@@ -78,11 +78,11 @@
         kio-app {:id "kio"
                  :active true}]
     (with-redefs [storage/get-app (constantly test-app-details)
-                  s3/writable? (constantly true)
+                  writable? (constantly true)
                   sync-user (constantly test-app-details)
                   sync-client (track calls :client)
                   sync-password (track calls :password)]
-      (sync-app test-config
+      (sync-app nil test-config
                 test-app
                 test-kio-app
                 test-tokens)
@@ -96,11 +96,11 @@
         kio-app {:id "kio"
                  :active true}]
     (with-redefs [storage/get-app (constantly test-app-details)
-                  s3/writable? (constantly true)
+                  writable? (constantly true)
                   sync-user (constantly test-app-details)
                   sync-client (track calls :client)
                   sync-password (track calls :password)]
-      (sync-app test-config
+      (sync-app nil test-config
                 test-app
                 test-kio-app
                 test-tokens)
@@ -110,8 +110,8 @@
 ; errors are handled by calling function
 (deftest do-not-handle-errors
   (with-redefs [storage/get-app (throwing "ups")
-                s3/writable? (constantly true)]
-    (is (thrown? Exception (sync-app test-config
+                writable? (constantly true)]
+    (is (thrown? Exception (sync-app nil test-config
                                      test-app
                                      test-kio-app
                                      test-tokens)))))

@@ -3,11 +3,12 @@
             [org.zalando.stups.mint.worker.test-helpers :refer [throwing
                                                                 track
                                                                 third
+                                                                fourth
                                                                 test-tokens
                                                                 one?
                                                                 test-config]]
             [org.zalando.stups.mint.worker.external.apps :as apps]
-            [org.zalando.stups.mint.worker.external.s3 :as s3]
+            [org.zalando.stups.mint.worker.external.bucket_storage :refer [writable?]]
             [org.zalando.stups.mint.worker.external.storage :as storage]
             [org.zalando.stups.mint.worker.external.etcd :as etcd]
             [org.zalando.stups.mint.worker.job.sync-app :refer [sync-app]]
@@ -33,7 +34,7 @@
     (run/run-sync test-config test-tokens)))
 
 ; test nothing bad happens on exception processing an app
-; test s3 counter does not get increased after non-s3 exception
+; test s3 counter does not get increased after non-bucket exception
 (deftest resiliency-error-on-sync-app
   (let [calls (atom {})]
     (with-redefs [apps/list-apps (constantly (list test-kio-app))
@@ -59,7 +60,7 @@
                   storage/list-apps (constantly (list test-app))
                   storage/get-app (constantly test-app)
                   storage/delete-app (track calls :delete)
-                  s3/writable? (constantly false)
+                  writable? (constantly false)
                   storage/update-status (track calls :update-status)]
       (run/run-sync test-config test-tokens)
       (is (one? (count (:update-status @calls))))
@@ -85,7 +86,7 @@
       (is (one? (count (:sync @calls))))
       (is (zero? (count (:delete @calls))))
       (let [call-param (first (:sync @calls))
-            kio-app (third call-param)]
+            kio-app (fourth call-param)]
         (is (= test-kio-app
                kio-app))))))
 
@@ -94,7 +95,7 @@
   (let [calls (atom {})
         inactive-app (assoc test-kio-app :active false)]
     (with-redefs [apps/list-apps (constantly (list inactive-app))
-                  s3/writable? (constantly true)
+                  writable? (constantly true)
                   storage/list-apps (constantly (list test-app))
                   storage/update-status (track calls :update)
                   storage/delete-app (track calls :delete)

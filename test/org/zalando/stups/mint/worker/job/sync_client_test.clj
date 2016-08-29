@@ -11,6 +11,8 @@
             [org.zalando.stups.mint.worker.job.sync-client :refer [sync-client]]
             [org.zalando.stups.mint.worker.external.services :as services]
             [org.zalando.stups.mint.worker.external.storage :as storage]
+            [org.zalando.stups.mint.worker.external.bucket_storage :refer [save-client
+                                                                           StorageException]]
             [org.zalando.stups.mint.worker.external.s3 :as s3])
   (:import (com.amazonaws.services.s3.model PutObjectResult)))
 
@@ -32,7 +34,7 @@
         test-app (assoc test-app :last_client_rotation recently)
         calls (atom {})]
     (with-redefs [services/generate-new-client (track calls :gen)]
-      (sync-client test-app
+      (sync-client nil test-app
                    test-config
                    test-tokens)
       (is (= 0 (count (:gen @calls)))))))
@@ -44,10 +46,10 @@
         test-app (assoc test-app :last_client_rotation past)
         calls (atom {})]
     (with-redefs [services/generate-new-client (constantly test-response)
-                  s3/save-client (constantly (PutObjectResult.))
+                  save-client (constantly (PutObjectResult.))
                   services/commit-client (track calls :commit)
                   storage/update-status (track calls :update)]
-      (sync-client test-app
+      (sync-client nil test-app
                    test-config
                    test-tokens)
       (is (= 1 (count (:commit @calls))))
@@ -63,10 +65,10 @@
 (deftest should-not-skip-when-never-rotated
   (let [calls (atom {})]
     (with-redefs [services/generate-new-client (constantly test-response)
-                  s3/save-client (constantly (PutObjectResult.))
+                  save-client (constantly (PutObjectResult.))
                   services/commit-client (track calls :commit)
                   storage/update-status (track calls :update)]
-      (sync-client test-app
+      (sync-client nil test-app
                    test-config
                    test-tokens)
       (is (= 1 (count (:commit @calls))))
@@ -76,23 +78,23 @@
 (deftest should-not-commit-if-s3-write-failed
   (let [calls (atom {})]
     (with-redefs [services/generate-new-client (constantly test-response)
-                  s3/save-client (sequentially (PutObjectResult.) (s3/S3Exception "bad s3" {}))
+                  save-client (sequentially (PutObjectResult.) (StorageException "bad s3" {}))
                   services/commit-client (track calls :commit)
                   storage/update-status (track calls :update)]
       (try
-        (sync-client test-app
+        (sync-client nil test-app
                      test-config
                      test-tokens)
         (is false)
         (catch Exception error
           (is (:type (ex-data error))
-              "S3Exception")))
+              "StorageException")))
       (is (= 0 (count (:commit @calls))))
       (is (= 0 (count (:update @calls)))))))
 
 ; it should not handle errors
 (deftest do-not-handle-errors
   (with-redefs [services/generate-new-client (throwing "ups")]
-    (is (thrown? Exception (sync-client test-app
+    (is (thrown? Exception (sync-client nil test-app
                                         test-config
                                         test-tokens)))))

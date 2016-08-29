@@ -10,7 +10,8 @@
             [org.zalando.stups.mint.worker.job.common :as c]
             [org.zalando.stups.mint.worker.external.services :as services]
             [org.zalando.stups.mint.worker.external.storage :as storage]
-            [org.zalando.stups.mint.worker.external.s3 :as s3])
+            [org.zalando.stups.mint.worker.external.bucket_storage :refer [save-client
+                                                                           StorageException]])
   (:import (com.amazonaws.services.s3.model PutObjectResult)))
 
 (def test-app
@@ -33,7 +34,7 @@
     (with-redefs [services/list-users (constantly [])
                   services/delete-user (track calls :delete)
                   services/create-or-update-user (track calls :update)]
-      (sync-user test-app
+      (sync-user nil test-app
                  test-kio-app
                  test-config
                  test-tokens)
@@ -48,7 +49,7 @@
                                                     :id (:username test-app)}])
                   services/delete-user (track calls :delete)
                   services/create-or-update-user (track calls :update)]
-      (sync-user test-app
+      (sync-user nil test-app
                  test-kio-app
                  test-config
                  test-tokens)
@@ -65,7 +66,7 @@
                                  :last_synced (c/format-date-time now))
         calls (atom {})]
     (with-redefs [services/create-or-update-user (track calls :update)]
-      (sync-user test-app
+      (sync-user nil test-app
                  test-kio-app
                  test-config
                  test-tokens)
@@ -78,7 +79,7 @@
                                                                              (time/minutes 3))))
         calls (atom {})]
     (with-redefs [services/create-or-update-user (track calls :update)]
-      (sync-user test-app
+      (sync-user nil test-app
                  test-kio-app
                  test-config
                  test-tokens)
@@ -92,7 +93,7 @@
                                                    (apply (track calls :update-user) args)
                                                    test-response)
                   storage/update-status (track calls :update-status)]
-      (let [returned-app (sync-user test-app
+      (let [returned-app (sync-user nil test-app
                                     test-kio-app
                                     test-config
                                     test-tokens)]
@@ -105,9 +106,9 @@
   (let [test-app (assoc test-app :is_client_confidential false)
         calls (atom {})]
     (with-redefs [services/create-or-update-user (constantly test-response)
-                  s3/save-client (constantly (PutObjectResult.))
+                  save-client (constantly (PutObjectResult.))
                   storage/update-status (track calls :update)]
-      (let [app (sync-user test-app
+      (let [app (sync-user nil test-app
                            test-kio-app
                            test-config
                            test-tokens)]
@@ -115,19 +116,19 @@
                (:client_id test-response)))
         (is (= 1 (count (:update @calls))))))))
 
-; should not update and throw on s3 error
-(deftest should-not-update-and-throw-on-s3-error
+; should not update and throw on bucket error
+(deftest should-not-update-and-throw-on-bucket-error
   (let [test-app (assoc test-app :is_client_confidential false)
         calls (atom {})]
     (with-redefs [services/create-or-update-user (constantly test-response)
-                  s3/save-client (sequentially (PutObjectResult.) (s3/S3Exception "bad s3" {}))
+                  save-client (sequentially (PutObjectResult.) (StorageException "bad s3" {}))
                   storage/update-status (track calls :update)]
       (try
-        (sync-user test-app
+        (sync-user nil test-app
                    test-kio-app
                    test-config
                    test-tokens)
         (catch Exception error
           (is (= (:type (ex-data error))
-                 "S3Exception"))
+                 "StorageException"))
           (is (= 0 (count (:update @calls)))))))))

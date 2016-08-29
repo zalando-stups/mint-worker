@@ -1,6 +1,9 @@
 (ns org.zalando.stups.mint.worker.external.s3-test
   (:require [clojure.test :refer :all]
-            [org.zalando.stups.mint.worker.external.s3 :as s3])
+            [org.zalando.stups.mint.worker.external.s3 :as s3]
+            [org.zalando.stups.mint.worker.external.bucket_storage :refer [save-client
+                                                                           save-user
+                                                                           writable?]])
   (:import (com.amazonaws AmazonServiceException)
            (com.amazonaws.regions Region Regions)))
 
@@ -10,25 +13,25 @@
 
 (deftest s3-writable-false
   (with-redefs [s3/put-string mock-put-error]
-    (is (= (s3/writable? "bucket" "app")
+    (is (= (writable? (s3/->S3) "bucket" "app")
            false))))
 
 (deftest s3-writable-true
   (with-redefs [s3/put-string (constantly nil)]
-    (is (= (s3/writable? "bucket" "app")
+    (is (= (writable? (s3/->S3) "bucket" "app")
            true))))
 
 (deftest s3-save-client-fail
   (with-redefs [s3/put-string mock-put-error]
-    (let [error (s3/save-client "bucket" "app" "client" "secret")]
+    (let [error (save-client (s3/->S3) "bucket" "app" "client" "secret")]
       (is (= (:type (ex-data error))
-             "S3Exception")))))
+             "StorageException")))))
 
 (deftest s3-save-user-fail
   (with-redefs [s3/put-string mock-put-error]
-    (let [error (s3/save-user "bucket" "app" "name" "password")]
+    (let [error (save-user (s3/->S3) "bucket" "app" "name" "password")]
       (is (= (:type (ex-data error))
-             "S3Exception")))))
+             "StorageException")))))
 
 (deftest infer-ireland-region
   (is (= (s3/infer-region "a-mint-bucket-in-eu-west-1")

@@ -6,6 +6,7 @@
             [org.zalando.stups.mint.worker.external.storage :as storage]
             [org.zalando.stups.mint.worker.external.apps :as apps]
             [org.zalando.stups.mint.worker.external.etcd :as etcd]
+            [org.zalando.stups.mint.worker.external.s3 :as s3]
             [overtone.at-at :refer [every]]
             [clj-time.core :as time]))
 
@@ -21,8 +22,8 @@
 
 (def worker-id (java.util.UUID/randomUUID))
 
-(defn s3-exception? [e]
-  (= "S3Exception" (:type (ex-data e))))
+(defn storage-exception? [e]
+  (= "StorageException" (:type (ex-data e))))
 
 (defn run-sync
   "Creates and deletes applications, rotates and distributes their credentials."
@@ -48,7 +49,7 @@
                   kio-app (get kio-apps-by-id app-id)]
               (when (or (not etcd-lock-url) (etcd/refresh-lock etcd-lock-url worker-id etcd-lock-ttl))
               (try
-                (sync-app configuration
+                (sync-app (s3/->S3) configuration
                           mint-app
                           kio-app
                           tokens)
@@ -68,11 +69,11 @@
                     (throw e))
                   (storage/update-status storage-url app-id
                                                      {:has_problems true
-                                                      :s3_errors    (when (s3-exception? e)
+                                                      :s3_errors    (when (storage-exception? e)
                                                                       (inc (:s3_errors mint-app)))
                                                       :message      (str e)}
                                                      tokens)
-                  (if (s3-exception? e)
+                  (if (storage-exception? e)
                     (log/info "Could not synchronize app %s because %s." app-id (str e))
                     (log/warn "Could not synchronize app %s because %s." app-id (str e)))))))))))
     (catch Throwable e

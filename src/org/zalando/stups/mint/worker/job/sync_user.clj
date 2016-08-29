@@ -5,12 +5,12 @@
             [org.zalando.stups.mint.worker.job.common :as c]
             [org.zalando.stups.mint.worker.external.services :as services]
             [org.zalando.stups.mint.worker.external.storage :as storage]
-            [org.zalando.stups.mint.worker.external.s3 :as s3]
+            [org.zalando.stups.mint.worker.external.bucket_storage :refer [save-client]]
             [clojure.string :as str]))
 
 (defn sync-user
   "If neccessary, creates or deletes service users."
-  [{:keys [id username s3_buckets last_synced last_modified scopes redirect_url is_client_confidential client_id] :as app}
+  [backend {:keys [id username s3_buckets last_synced last_modified scopes redirect_url is_client_confidential client_id] :as app}
    {:keys [team_id active name subtitle]} ; kio app
    configuration
    tokens]
@@ -62,7 +62,7 @@
             (when (and (not is_client_confidential)
                        (nil? client_id))
               (log/debug "Saving non-confidential client ID %s for app %s..." new-client-id id)
-              (when-let [error (c/has-error (c/busy-map #(s3/save-client % id new-client-id nil)
+              (when-let [error (c/has-error (c/busy-map #(save-client backend % id new-client-id nil)
                                                         s3_buckets))]
                 (log/debug "Could not save client ID: %s" (str error))
                 ; throw to update s3_errors once outside
