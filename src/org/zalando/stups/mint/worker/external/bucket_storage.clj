@@ -4,6 +4,9 @@
   [msg data]
   `(ex-info ~msg (merge ~data {:type "StorageException"})))
 
+(defn storage-exception? [e]
+  (= "StorageException" (:type (ex-data e))))
+
 (defprotocol BucketStorage
   "Storage defines a protocol for writing user and client credentials to a bucket storage service like S3 or GCS"
   (writable? [_ bucket-name app-id] "Check if bucket is writeable")

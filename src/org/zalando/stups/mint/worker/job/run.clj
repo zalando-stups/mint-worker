@@ -7,6 +7,7 @@
             [org.zalando.stups.mint.worker.external.apps :as apps]
             [org.zalando.stups.mint.worker.external.etcd :as etcd]
             [org.zalando.stups.mint.worker.external.s3 :as s3]
+            [org.zalando.stups.mint.worker.external.bucket_storage :refer [storage-exception?]]
             [overtone.at-at :refer [every]]
             [clj-time.core :as time]))
 
@@ -21,9 +22,6 @@
 (def rate-limited-until (atom (time/epoch)))
 
 (def worker-id (java.util.UUID/randomUUID))
-
-(defn storage-exception? [e]
-  (= "StorageException" (:type (ex-data e))))
 
 (defn run-sync
   "Creates and deletes applications, rotates and distributes their credentials."
