@@ -47,7 +47,7 @@
                   kio-app (get kio-apps-by-id app-id)]
               (when (or (not etcd-lock-url) (etcd/refresh-lock etcd-lock-url worker-id etcd-lock-ttl))
               (try
-                (sync-app (s3/->S3) configuration
+                (sync-app configuration
                           mint-app
                           kio-app
                           tokens)

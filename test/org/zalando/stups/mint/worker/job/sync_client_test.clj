@@ -34,7 +34,7 @@
         test-app (assoc test-app :last_client_rotation recently)
         calls (atom {})]
     (with-redefs [services/generate-new-client (track calls :gen)]
-      (sync-client nil test-app
+      (sync-client test-app
                    test-config
                    test-tokens)
       (is (= 0 (count (:gen @calls)))))))
@@ -49,7 +49,7 @@
                   save-client (constantly (PutObjectResult.))
                   services/commit-client (track calls :commit)
                   storage/update-status (track calls :update)]
-      (sync-client nil test-app
+      (sync-client test-app
                    test-config
                    test-tokens)
       (is (= 1 (count (:commit @calls))))
@@ -68,7 +68,7 @@
                   save-client (constantly (PutObjectResult.))
                   services/commit-client (track calls :commit)
                   storage/update-status (track calls :update)]
-      (sync-client nil test-app
+      (sync-client test-app
                    test-config
                    test-tokens)
       (is (= 1 (count (:commit @calls))))
@@ -82,7 +82,7 @@
                   services/commit-client (track calls :commit)
                   storage/update-status (track calls :update)]
       (try
-        (sync-client nil test-app
+        (sync-client test-app
                      test-config
                      test-tokens)
         (is false)
@@ -95,6 +95,6 @@
 ; it should not handle errors
 (deftest do-not-handle-errors
   (with-redefs [services/generate-new-client (throwing "ups")]
-    (is (thrown? Exception (sync-client nil test-app
+    (is (thrown? Exception (sync-client test-app
                                         test-config
                                         test-tokens)))))

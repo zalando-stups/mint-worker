@@ -10,7 +10,7 @@
 
 (defn sync-user
   "If neccessary, creates or deletes service users."
-  [backend {:keys [id username s3_buckets last_synced last_modified scopes redirect_url is_client_confidential client_id] :as app}
+  [{:keys [id username s3_buckets last_synced last_modified scopes redirect_url is_client_confidential client_id] :as app}
    {:keys [team_id active name subtitle]} ; kio app
    configuration
    tokens]
@@ -57,12 +57,13 @@
                                                                           :confidential  is_client_confidential}
                                                           :user_config   {:scopes (:application-scope scopes)}}
                                                          tokens)
-                new-client-id (:client_id response)]
+                new-client-id (:client_id response)
+                params {:app-id id :client-id new-client-id :client-secret nil}]
 
             (when (and (not is_client_confidential)
                        (nil? client_id))
               (log/debug "Saving non-confidential client ID %s for app %s..." new-client-id id)
-              (when-let [error (c/has-error (c/busy-map #(save-client backend % id new-client-id nil)
+              (when-let [error (c/has-error (c/busy-map #(save-client (assoc params :bucket-name %))
                                                         s3_buckets))]
                 (log/debug "Could not save client ID: %s" (str error))
                 ; throw to update s3_errors once outside

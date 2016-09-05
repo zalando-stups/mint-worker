@@ -7,8 +7,20 @@
 (defn storage-exception? [e]
   (= "StorageException" (:type (ex-data e))))
 
-(defprotocol BucketStorage
-  "Storage defines a protocol for writing user and client credentials to a bucket storage service like S3 or GCS"
-  (writable? [_ bucket-name app-id] "Check if bucket is writeable")
-  (save-user [_ bucket-name app-id username password] "Save user credentials in bucket")
-  (save-client [_ bucket-name app-id client-id client_secret] "Save client credentials in bucket"))
+; TODO: actually infer the bucket type
+(defn infer-bucket-type
+  "infer bucket type from bucket name"
+  [bucket-name]
+  (if (.startsWith bucket-name "gs://") :gs :s3))
+
+(defmulti writable?
+          "Check if a bucket is writable?"
+          (fn [x] (infer-bucket-type (x :bucket-name))))
+
+(defmulti save-user
+          "Save user credentials in bucket"
+          (fn [x] (infer-bucket-type (x :bucket-name))))
+
+(defmulti save-client
+          "Save client credentials in bucket"
+          (fn [x] (infer-bucket-type (x :bucket-name))))

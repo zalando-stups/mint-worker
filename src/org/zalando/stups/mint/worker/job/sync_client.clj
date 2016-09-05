@@ -10,7 +10,7 @@
 
 (defn sync-client
   "If neccessary, creates and syncs new client credentials for the given app"
-  [backend {:keys [id client_id username s3_buckets last_client_rotation]} configuration tokens]
+  [{:keys [id client_id username s3_buckets last_client_rotation]} configuration tokens]
   {:pre [(not (str/blank? id))
          (seq s3_buckets)
          (not (str/blank? username))]}
@@ -26,10 +26,11 @@
           (let [generate-client-response (services/generate-new-client service-user-url username client_id tokens)
                 new-client-id (:client_id generate-client-response)
                 transaction-id (:txid generate-client-response)
-                client-secret (:client_secret generate-client-response)]
+                client-secret (:client_secret generate-client-response)
+                params {:app-id id, :client-id new-client-id, :client-secret client-secret}]
             ; Step 2: distribute it
             (log/debug "Saving the new client for %s to buckets: %s..." id s3_buckets)
-            (if-let [error (c/has-error (c/busy-map #(save-client backend % id new-client-id client-secret)
+            (if-let [error (c/has-error (c/busy-map #(save-client (assoc params :bucket-name %))
                                                     s3_buckets))]
               (do
                 (log/debug "Could not save client to bucket: %s" (str error))

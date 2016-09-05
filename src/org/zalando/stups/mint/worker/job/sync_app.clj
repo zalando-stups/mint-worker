@@ -11,7 +11,7 @@
 
 (defn sync-app
   "Syncs the application with the given app-id."
-  [backend {:keys [max-s3-errors] :as configuration} {:keys [id s3_errors]} kio-app tokens]
+  [{:keys [max-s3-errors] :as configuration} {:keys [id s3_errors]} kio-app tokens]
   {:pre [(not (str/blank? id))]}
   (let [storage-url (config/require-config configuration :mint-storage-url)
         kio-url (config/require-config configuration :kio-url)]
@@ -20,7 +20,8 @@
     (if-not (> s3_errors
                max-s3-errors)
             (let [app        (storage/get-app storage-url id tokens)
-                  unwritable (doall (remove #(writable? backend % id) (:s3_buckets app)))]
+                  params {:app-id id}
+                  unwritable (doall (remove #(writable? (assoc params :bucket-name %)) (:s3_buckets app)))]
               (if (seq unwritable)
                   ; unwritable buckets! skip sync.
                   (do
@@ -31,14 +32,14 @@
                                            {:s3_buckets unwritable})))
                   ; writable buckets, presumably. do sync.
                   ; TODO handle nil for kio-app
-                  (let [app (merge app (sync-user backend app kio-app configuration tokens))]
+                  (let [app (merge app (sync-user app kio-app configuration tokens))]
                     (log/debug "App has mint configuration %s" app)
                     (log/debug "App has kio configuration %s" kio-app)
                     (if (:active kio-app)
                       (do
-                        (sync-password backend app configuration tokens)
+                        (sync-password app configuration tokens)
                         (if (:is_client_confidential app)
-                          (sync-client backend app configuration tokens)
+                          (sync-client app configuration tokens)
                           (log/debug "Skipping client rotation for non-confidential client %s" id)))
                       (log/debug "Skipping password and client rotation for inactive app %s" id))
                     (log/info "Synced app %s." id))))

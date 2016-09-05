@@ -34,7 +34,7 @@
     (with-redefs [services/list-users (constantly [])
                   services/delete-user (track calls :delete)
                   services/create-or-update-user (track calls :update)]
-      (sync-user nil test-app
+      (sync-user test-app
                  test-kio-app
                  test-config
                  test-tokens)
@@ -49,7 +49,7 @@
                                                     :id (:username test-app)}])
                   services/delete-user (track calls :delete)
                   services/create-or-update-user (track calls :update)]
-      (sync-user nil test-app
+      (sync-user test-app
                  test-kio-app
                  test-config
                  test-tokens)
@@ -66,7 +66,7 @@
                                  :last_synced (c/format-date-time now))
         calls (atom {})]
     (with-redefs [services/create-or-update-user (track calls :update)]
-      (sync-user nil test-app
+      (sync-user test-app
                  test-kio-app
                  test-config
                  test-tokens)
@@ -79,7 +79,7 @@
                                                                              (time/minutes 3))))
         calls (atom {})]
     (with-redefs [services/create-or-update-user (track calls :update)]
-      (sync-user nil test-app
+      (sync-user test-app
                  test-kio-app
                  test-config
                  test-tokens)
@@ -93,7 +93,7 @@
                                                    (apply (track calls :update-user) args)
                                                    test-response)
                   storage/update-status (track calls :update-status)]
-      (let [returned-app (sync-user nil test-app
+      (let [returned-app (sync-user test-app
                                     test-kio-app
                                     test-config
                                     test-tokens)]
@@ -108,7 +108,7 @@
     (with-redefs [services/create-or-update-user (constantly test-response)
                   save-client (constantly (PutObjectResult.))
                   storage/update-status (track calls :update)]
-      (let [app (sync-user nil test-app
+      (let [app (sync-user test-app
                            test-kio-app
                            test-config
                            test-tokens)]
@@ -124,7 +124,7 @@
                   save-client (sequentially (PutObjectResult.) (StorageException "bad s3" {}))
                   storage/update-status (track calls :update)]
       (try
-        (sync-user nil test-app
+        (sync-user test-app
                    test-kio-app
                    test-config
                    test-tokens)

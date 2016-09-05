@@ -3,7 +3,6 @@
             [org.zalando.stups.mint.worker.test-helpers :refer [throwing
                                                                 track
                                                                 third
-                                                                fourth
                                                                 test-tokens
                                                                 one?
                                                                 test-config]]
@@ -86,7 +85,7 @@
       (is (one? (count (:sync @calls))))
       (is (zero? (count (:delete @calls))))
       (let [call-param (first (:sync @calls))
-            kio-app (fourth call-param)]
+            kio-app (third call-param)]
         (is (= test-kio-app
                kio-app))))))
 

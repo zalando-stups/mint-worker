@@ -32,11 +32,6 @@
   [coll]
   `(nth ~coll 2))
 
-(defmacro fourth
-  "Just as first, second, third"
-  [coll]
-  `(nth ~coll 3))
-
 (defn sequentially
   "Returns a function that returns provided arguments sequentially on every call"
   [& args]

@@ -31,7 +31,7 @@
         test-app (assoc test-app :last_password_rotation recently)
         calls (atom {})]
     (with-redefs [services/generate-new-password (track calls :gen)]
-      (sync-password nil test-app
+      (sync-password test-app
                      test-config
                      test-tokens)
       (is (= 0 (count (:gen @calls)))))))
@@ -43,7 +43,7 @@
                   save-user (constantly (PutObjectResult.))
                   services/commit-password (track calls :commit)
                   storage/update-status (track calls :update)]
-      (sync-password nil test-app
+      (sync-password test-app
                      test-config
                      test-tokens)
       (is (= 1 (count (:commit @calls))))
@@ -65,7 +65,7 @@
                   save-user (constantly (PutObjectResult.))
                   services/commit-password (track calls :commit)
                   storage/update-status (track calls :update)]
-      (sync-password nil test-app
+      (sync-password test-app
                      test-config
                      test-tokens)
       (is (= 1 (count (:commit @calls))))
@@ -79,7 +79,7 @@
                   services/commit-password (track calls :commit)
                   storage/update-status (track calls :update)]
       (try
-        (sync-password nil test-app
+        (sync-password test-app
                        test-config
                        test-tokens)
         (is false)
@@ -95,7 +95,7 @@
     (with-redefs [services/generate-new-password (throwing "whoopsie daisy")
                   services/commit-password (track calls :commit)
                   storage/update-status (track calls :update)]
-      (is (thrown? Exception (sync-password nil test-app
+      (is (thrown? Exception (sync-password test-app
                                             test-config
                                             test-tokens)))
       (is (= 0 (count (:commit @calls))))
