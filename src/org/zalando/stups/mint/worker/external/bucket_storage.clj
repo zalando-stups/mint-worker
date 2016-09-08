@@ -8,7 +8,6 @@
 (defn storage-exception? [e]
   (= "StorageException" (:type (ex-data e))))
 
-; TODO: actually infer the bucket type
 (defn infer-bucket-type
   "infer bucket type from bucket name"
   [bucket-name]
@@ -16,12 +15,14 @@
 
 (defmulti writable?
           "Check if a bucket is writable?"
-          (fn [x] (infer-bucket-type (x :bucket-name))))
+          (fn [bucket-name app-id &] (infer-bucket-type bucket-name)))
 
 (defmulti save-user
           "Save user credentials in bucket"
-          (fn [x] (infer-bucket-type (x :bucket-name))))
+          (fn [bucket-name app-id username password &]
+            (infer-bucket-type bucket-name)))
 
 (defmulti save-client
           "Save client credentials in bucket"
-          (fn [x] (infer-bucket-type (x :bucket-name))))
+          (fn [bucket-name app-id client-id client-secret &]
+            (infer-bucket-type bucket-name)))

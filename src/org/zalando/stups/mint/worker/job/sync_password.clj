@@ -23,11 +23,10 @@
       (do
         ; Step 1: generate password
         (log/debug "Acquiring new password for %s..." username)
-        (let [{:keys [password txid]} (services/generate-new-password service-user-url username tokens)
-              params {:app-id id :username username :password password}]
+        (let [{:keys [password txid]} (services/generate-new-password service-user-url username tokens)]
           ; Step 2: distribute it
           (log/debug "Saving the new password for %s to buckets: %s..." id s3_buckets)
-          (if-let [error (c/has-error (c/busy-map #(save-user (assoc params :bucket-name %))
+          (if-let [error (c/has-error (c/busy-map #(save-user % id username password)
                                                   s3_buckets))]
             (do
               (log/debug "Could not save password to bucket: %s" (str error))

@@ -40,53 +40,43 @@
       (.setRegion s3client region))
     (.putObject s3client request)))
 
-(defmethod writable? :s3 [params]
-  {:pre [(not (str/blank? (params :bucket-name)))
-         (not (str/blank? (params :app-id)))]}
-  (let [bucket-name (params :bucket-name)
-        app-id (params :app-id)]
-    (try
-      (put-string bucket-name
-                  (str app-id "/test-mint-write")
-                  {:status "SUCCESS"})
-      (log/debug "S3 bucket %s with prefix %s is writable" bucket-name app-id)
-      true
-      (catch AmazonServiceException e
-        (log/debug "S3 bucket %s with prefix %s is NOT WRITABLE. Reason %s." bucket-name app-id (str e))
-        false))))
+(defmethod writable? :s3 [bucket-name app-id]
+  {:pre [(not (str/blank? bucket-name))
+         (not (str/blank? app-id))]}
+  (try
+    (put-string bucket-name
+                (str app-id "/test-mint-write")
+                {:status "SUCCESS"})
+    (log/debug "S3 bucket %s with prefix %s is writable" bucket-name app-id)
+    true
+    (catch AmazonServiceException e
+      (log/debug "S3 bucket %s with prefix %s is NOT WRITABLE. Reason %s." bucket-name app-id (str e))
+      false)))
 
-(defmethod save-user :s3 [params]
-  {:pre [(not (str/blank? (params :bucket-name)))
-         (not (str/blank? (params :app-id)))]}
-  (let [bucket-name (params :bucket-name)
-        app-id (params :app-id)
-        username (params :username)
-        password (params :password)]
-    (try
-      (put-string bucket-name
-                  (str app-id "/user.json")
-                  {:application_username username
-                   :application_password password})
-      (catch AmazonServiceException e
-        (StorageException (.getMessage e)
-                          {:status   (.getStatusCode e)
-                           :message  (.getMessage e)
-                           :original e})))))
+(defmethod save-user :s3 [bucket-name app-id username password]
+  {:pre [(not (str/blank? bucket-name))
+         (not (str/blank? app-id))]}
+  (try
+    (put-string bucket-name
+                (str app-id "/user.json")
+                {:application_username username
+                 :application_password password})
+    (catch AmazonServiceException e
+      (StorageException (.getMessage e)
+                        {:status   (.getStatusCode e)
+                         :message  (.getMessage e)
+                         :original e}))))
 
-(defmethod save-client :s3 [params]
-  {:pre [(not (str/blank? (params :bucket-name)))
-         (not (str/blank? (params :app-id)))]}
-  (let [bucket-name (params :bucket-name)
-        app-id (params :app-id)
-        client-id (params :client-id)
-        client-secret (params :client-secret)]
-    (try
-      (put-string bucket-name
-                  (str app-id "/client.json")
-                  {:client_id     client-id
-                   :client_secret client-secret})
-      (catch AmazonServiceException e
-        (StorageException (.getMessage e)
-                          {:status   (.getStatusCode e)
-                           :message  (.getMessage e)
-                           :original e})))))
+(defmethod save-client :s3 [bucket-name app-id client-id client-secret]
+  {:pre [(not (str/blank? bucket-name))
+         (not (str/blank? app-id))]}
+  (try
+    (put-string bucket-name
+                (str app-id "/client.json")
+                {:client_id     client-id
+                 :client_secret client-secret})
+    (catch AmazonServiceException e
+      (StorageException (.getMessage e)
+                        {:status   (.getStatusCode e)
+                         :message  (.getMessage e)
+                         :original e}))))

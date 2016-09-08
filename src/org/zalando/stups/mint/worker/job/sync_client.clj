@@ -26,11 +26,10 @@
           (let [generate-client-response (services/generate-new-client service-user-url username client_id tokens)
                 new-client-id (:client_id generate-client-response)
                 transaction-id (:txid generate-client-response)
-                client-secret (:client_secret generate-client-response)
-                params {:app-id id, :client-id new-client-id, :client-secret client-secret}]
+                client-secret (:client_secret generate-client-response)]
             ; Step 2: distribute it
             (log/debug "Saving the new client for %s to buckets: %s..." id s3_buckets)
-            (if-let [error (c/has-error (c/busy-map #(save-client (assoc params :bucket-name %))
+            (if-let [error (c/has-error (c/busy-map #(save-client % id new-client-id client-secret)
                                                     s3_buckets))]
               (do
                 (log/debug "Could not save client to bucket: %s" (str error))

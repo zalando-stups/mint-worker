@@ -13,36 +13,27 @@
 
 (deftest s3-writable-false
   (with-redefs [s3/put-string mock-put-error]
-    (is (= (writable? {:bucket-name "bucket", :app-id "app"})
+    (is (= (writable? "bucket" "app")
            false))))
 
 (deftest s3-writable-true
   (with-redefs [s3/put-string (constantly nil)]
-    (is (= (writable? {:bucket-name "bucket", :app-id "app"})
+    (is (= (writable? "bucket" "app")
            true))))
 
 (deftest s3-save-client-fail
   (with-redefs [s3/put-string mock-put-error]
-    (let [error (save-client {:bucket-name "bucket"
-                              :app-id "app"
-                              :client-id "client"
-                              :client-secret"secret"})]
+    (let [error (save-client "bucket" "app" "client" "secret")]
       (is (= (:type (ex-data error))
              "StorageException")))))
 
 (deftest s3-save-client-success
   (with-redefs [s3/put-string (constantly nil)]
-    (is (nil? (save-client {:bucket-name "bucket"
-                            :app-id "app"
-                            :client-id "client"
-                            :client-secret"secret"})))))
+    (is (nil? (save-client "bucket" "app" "client" "secret")))))
 
 (deftest s3-save-user-fail
   (with-redefs [s3/put-string mock-put-error]
-    (let [error (save-user {:bucket-name "bucket"
-                            :app-id "app"
-                            :name "name"
-                            :password "password"})]
+    (let [error (save-user "bucket" "app" "name" "password")]
       (is (= (:type (ex-data error))
              "StorageException")))))
 
