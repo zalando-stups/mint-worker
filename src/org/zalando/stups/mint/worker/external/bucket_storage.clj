@@ -1,4 +1,5 @@
-(ns org.zalando.stups.mint.worker.external.bucket_storage)
+(ns org.zalando.stups.mint.worker.external.bucket_storage
+  (:require [clojure.string :as str]))
 
 (defmacro StorageException
   [msg data]
@@ -11,7 +12,7 @@
 (defn infer-bucket-type
   "infer bucket type from bucket name"
   [bucket-name]
-  (if (.startsWith bucket-name "gs://") :gs :s3))
+  (if (str/starts-with? bucket-name "gs://") :gs :s3))
 
 (defmulti writable?
           "Check if a bucket is writable?"
