@@ -6,7 +6,7 @@
             [org.zalando.stups.mint.worker.external.storage :as storage]
             [org.zalando.stups.mint.worker.external.apps :as apps]
             [org.zalando.stups.mint.worker.external.etcd :as etcd]
-            [org.zalando.stups.mint.worker.external.s3 :as s3]
+            [org.zalando.stups.mint.worker.external.s3]
             [org.zalando.stups.mint.worker.external.bucket_storage :refer [storage-exception?]]
             [overtone.at-at :refer [every]]
             [clj-time.core :as time]))

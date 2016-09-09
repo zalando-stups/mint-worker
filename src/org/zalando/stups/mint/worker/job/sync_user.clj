@@ -57,13 +57,12 @@
                                                                           :confidential  is_client_confidential}
                                                           :user_config   {:scopes (:application-scope scopes)}}
                                                          tokens)
-                new-client-id (:client_id response)
-                params {:app-id id :client-id new-client-id :client-secret nil}]
+                new-client-id (:client_id response)]
 
             (when (and (not is_client_confidential)
                        (nil? client_id))
               (log/debug "Saving non-confidential client ID %s for app %s..." new-client-id id)
-              (when-let [error (c/has-error (c/busy-map #(save-client (assoc params :bucket-name %))
+              (when-let [error (c/has-error (c/busy-map #(save-client % id new-client-id nil)
                                                         s3_buckets))]
                 (log/debug "Could not save client ID: %s" (str error))
                 ; throw to update s3_errors once outside
