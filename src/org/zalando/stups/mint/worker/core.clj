@@ -34,6 +34,7 @@
                                                               :tokens        {:mint-storage-rw-api ["uid" "application.write_all_sensitive"]
                                                                               :kio-ro-api          ["uid"]
                                                                               :service-user-rw-api ["uid"]
+                                                                              :mint-coworker-w-api ["uid"]
                                                                               :essentials-ro-api   ["uid"]}})
                  :jobs (using (job/map->Jobs {:configuration (:jobs configuration)})
                               [:tokens]))]

@@ -12,7 +12,8 @@
             [org.zalando.stups.mint.worker.job.sync-app :refer [sync-app]]
             [org.zalando.stups.mint.worker.job.sync-client :refer [sync-client]]
             [org.zalando.stups.mint.worker.job.sync-user :refer [sync-user]]
-            [org.zalando.stups.mint.worker.job.sync-password :refer [sync-password]]))
+            [org.zalando.stups.mint.worker.job.sync-password :refer [sync-password]]
+            [org.zalando.stups.mint.worker.external.gcs :as gcs]))
 
 (def test-app
   {:id        "kio"
@@ -24,7 +25,7 @@
 
 (def test-app-details
   {:id         "kio"
-   :s3_buckets ["bucket_one" "bucket_two"]
+   :s3_buckets ["bucket_one" "bucket_two" "gs://bucket_three"]
    :s3_errors  0})
 
 ; it should not even try to test writability of buckets when max_errors is reached
@@ -62,6 +63,7 @@
                  :active false}]
     (with-redefs [storage/get-app (constantly test-app-details)
                   s3/put-string (constantly nil)
+                  gcs/post-object (constantly nil)
                   sync-user (constantly test-app)
                   sync-client (track calls :client)
                   sync-password (track calls :password)]
@@ -80,6 +82,7 @@
                  :active true}]
     (with-redefs [storage/get-app (constantly test-app-details)
                   s3/put-string (constantly nil)
+                  gcs/post-object (constantly nil)
                   sync-user (constantly test-app-details)
                   sync-client (track calls :client)
                   sync-password (track calls :password)]
@@ -98,6 +101,7 @@
                  :active true}]
     (with-redefs [storage/get-app (constantly test-app-details)
                   s3/put-string (constantly nil)
+                  gcs/post-object (constantly nil)
                   sync-user (constantly test-app-details)
                   sync-client (track calls :client)
                   sync-password (track calls :password)]
@@ -111,7 +115,8 @@
 ; errors are handled by calling function
 (deftest do-not-handle-errors
   (with-redefs [storage/get-app (throwing "ups")
-                s3/put-string (constantly nil)]
+                s3/put-string (constantly nil)
+                gcs/post-object (constantly nil)]
     (is (thrown? Exception (sync-app test-config
                                      test-app
                                      test-kio-app

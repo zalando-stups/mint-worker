@@ -30,6 +30,7 @@ JOBS_KIO_URL            | yes        |                         | URL to [Kio](ht
 JOBS_SERVICE_USER_URL   | yes        |                         | URL to Service User API
 JOBS_MINT_STORAGE_URL   | yes        |                         | URL to Mint storage
 JOBS_ESSENTIALS_URL     | yes        |                         | URL of [essentials](https://github.com/zalando-stups/essentials). Used to verify scopes.
+JOBS_MINT_COWORKER_URL  | no         |                         | URL of [mint-coworker proxy](https://github.bus.zalan.do/teapot/mint-coworker). Used for proxying bucket writes to GCS.
 JOBS_MAX_S3_ERRORS      | no         | 10                      | At which point mint-worker pauses password/client rotation for applications
 JOBS_ETCD_LOCK_URL      | no         |                         | etcd key URL for locking
 JOBS_ETCD_LOCK_TTL      | no         | 500                     | etcd TTL for locking
@@ -65,7 +66,7 @@ development:
 
 ## License
 
-Copyright © 2015 Zalando SE
+Copyright © 2016 Zalando SE
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.

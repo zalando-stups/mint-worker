@@ -15,14 +15,14 @@
 
 (defmulti writable?
           "Check if a bucket is writable?"
-          (fn [bucket-name app-id &] (infer-bucket-type bucket-name)))
+          (fn [bucket-name app-id & _] (infer-bucket-type bucket-name)))
 
 (defmulti save-user
           "Save user credentials in bucket"
-          (fn [bucket-name app-id username password &]
+          (fn [bucket-name app-id username password & _]
             (infer-bucket-type bucket-name)))
 
 (defmulti save-client
           "Save client credentials in bucket"
-          (fn [bucket-name app-id client-id client-secret &]
+          (fn [bucket-name app-id client-id client-secret & _]
             (infer-bucket-type bucket-name)))
