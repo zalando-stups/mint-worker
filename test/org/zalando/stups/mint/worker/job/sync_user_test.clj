@@ -10,7 +10,9 @@
             [org.zalando.stups.mint.worker.job.common :as c]
             [org.zalando.stups.mint.worker.external.services :as services]
             [org.zalando.stups.mint.worker.external.storage :as storage]
-            [org.zalando.stups.mint.worker.external.s3 :as s3])
+            [org.zalando.stups.mint.worker.external.s3 :as s3]
+            [org.zalando.stups.mint.worker.external.bucket_storage :refer [save-client
+                                                                           StorageException]])
   (:import (com.amazonaws.services.s3.model PutObjectResult)))
 
 (def test-app
@@ -105,7 +107,7 @@
   (let [test-app (assoc test-app :is_client_confidential false)
         calls (atom {})]
     (with-redefs [services/create-or-update-user (constantly test-response)
-                  s3/save-client (constantly (PutObjectResult.))
+                  s3/put-string (constantly (PutObjectResult.))
                   storage/update-status (track calls :update)]
       (let [app (sync-user test-app
                            test-kio-app
@@ -115,12 +117,12 @@
                (:client_id test-response)))
         (is (= 1 (count (:update @calls))))))))
 
-; should not update and throw on s3 error
-(deftest should-not-update-and-throw-on-s3-error
+; should not update and throw on bucket error
+(deftest should-not-update-and-throw-on-bucket-error
   (let [test-app (assoc test-app :is_client_confidential false)
         calls (atom {})]
     (with-redefs [services/create-or-update-user (constantly test-response)
-                  s3/save-client (sequentially (PutObjectResult.) (s3/S3Exception "bad s3" {}))
+                  s3/put-string (sequentially (PutObjectResult.) (StorageException "bad s3" {}))
                   storage/update-status (track calls :update)]
       (try
         (sync-user test-app
@@ -129,5 +131,5 @@
                    test-tokens)
         (catch Exception error
           (is (= (:type (ex-data error))
-                 "S3Exception"))
+                 "StorageException"))
           (is (= 0 (count (:update @calls)))))))))

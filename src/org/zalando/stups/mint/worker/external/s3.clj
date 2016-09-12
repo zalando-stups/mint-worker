@@ -1,8 +1,11 @@
 (ns org.zalando.stups.mint.worker.external.s3
   (:require [cheshire.core :as json]
-            [clojure.java.io :as io]
             [org.zalando.stups.friboo.log :as log]
-            [clojure.string :as str])
+            [clojure.string :as str]
+            [org.zalando.stups.mint.worker.external.bucket_storage :refer [writable?
+                                                                           save-user
+                                                                           save-client
+                                                                           StorageException]])
   (:import (java.io ByteArrayInputStream)
            (com.amazonaws AmazonServiceException)
            (com.amazonaws.services.s3 AmazonS3Client)
@@ -10,10 +13,6 @@
                                             ObjectMetadata
                                             CannedAccessControlList)
            (com.amazonaws.regions Regions Region)))
-
-(defmacro S3Exception
-  [msg data]
-  `(ex-info ~msg (merge ~data {:type "S3Exception"})))
 
 (defn infer-region [bucket-name]
   (some->>
@@ -25,24 +24,23 @@
 (defn put-string
   "Stores an object in S3."
   [bucket-name path data]
-  (let [region   (infer-region bucket-name)
+  (let [region (infer-region bucket-name)
         s3client (AmazonS3Client.)
-        bytes    (-> data
-                 (json/generate-string)
-                 (.getBytes "UTF-8"))
-        stream   (ByteArrayInputStream. bytes)
+        bytes (-> data
+                  (json/generate-string)
+                  (.getBytes "UTF-8"))
+        stream (ByteArrayInputStream. bytes)
         metadata (doto (ObjectMetadata.)
                    (.setContentLength (count bytes))
                    (.setContentType "application/json"))
-        request  (doto (PutObjectRequest. bucket-name path stream metadata)
+        request (doto (PutObjectRequest. bucket-name path stream metadata)
                   (.withCannedAcl CannedAccessControlList/BucketOwnerFullControl))]
     ; to get rid of the S3V4AuthErrorRetryStrategy warnings
     (when region
       (.setRegion s3client region))
     (.putObject s3client request)))
 
-(defn writable?
-  [bucket-name app-id]
+(defmethod writable? :s3 [bucket-name app-id]
   {:pre [(not (str/blank? bucket-name))
          (not (str/blank? app-id))]}
   (try
@@ -55,7 +53,7 @@
       (log/debug "S3 bucket %s with prefix %s is NOT WRITABLE. Reason %s." bucket-name app-id (str e))
       false)))
 
-(defn save-user [bucket-name app-id username password]
+(defmethod save-user :s3 [bucket-name app-id username password]
   {:pre [(not (str/blank? bucket-name))
          (not (str/blank? app-id))]}
   (try
@@ -64,21 +62,21 @@
                 {:application_username username
                  :application_password password})
     (catch AmazonServiceException e
-      (S3Exception (.getMessage e)
-                   {:status (.getStatusCode e)
-                    :message (.getMessage e)
-                    :original e}))))
+      (StorageException (.getMessage e)
+                        {:status   (.getStatusCode e)
+                         :message  (.getMessage e)
+                         :original e}))))
 
-(defn save-client [bucket-name app-id client-id client_secret]
+(defmethod save-client :s3 [bucket-name app-id client-id client-secret]
   {:pre [(not (str/blank? bucket-name))
          (not (str/blank? app-id))]}
   (try
     (put-string bucket-name
                 (str app-id "/client.json")
-                {:client_id client-id
-                 :client_secret client_secret})
+                {:client_id     client-id
+                 :client_secret client-secret})
     (catch AmazonServiceException e
-      (S3Exception (.getMessage e)
-                   {:status (.getStatusCode e)
-                    :message (.getMessage e)
-                    :original e}))))
+      (StorageException (.getMessage e)
+                        {:status   (.getStatusCode e)
+                         :message  (.getMessage e)
+                         :original e}))))

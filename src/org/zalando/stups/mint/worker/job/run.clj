@@ -6,6 +6,8 @@
             [org.zalando.stups.mint.worker.external.storage :as storage]
             [org.zalando.stups.mint.worker.external.apps :as apps]
             [org.zalando.stups.mint.worker.external.etcd :as etcd]
+            [org.zalando.stups.mint.worker.external.s3]
+            [org.zalando.stups.mint.worker.external.bucket_storage :refer [storage-exception?]]
             [overtone.at-at :refer [every]]
             [clj-time.core :as time]))
 
@@ -20,9 +22,6 @@
 (def rate-limited-until (atom (time/epoch)))
 
 (def worker-id (java.util.UUID/randomUUID))
-
-(defn s3-exception? [e]
-  (= "S3Exception" (:type (ex-data e))))
 
 (defn run-sync
   "Creates and deletes applications, rotates and distributes their credentials."
@@ -68,11 +67,11 @@
                     (throw e))
                   (storage/update-status storage-url app-id
                                                      {:has_problems true
-                                                      :s3_errors    (when (s3-exception? e)
+                                                      :s3_errors    (when (storage-exception? e)
                                                                       (inc (:s3_errors mint-app)))
                                                       :message      (str e)}
                                                      tokens)
-                  (if (s3-exception? e)
+                  (if (storage-exception? e)
                     (log/info "Could not synchronize app %s because %s." app-id (str e))
                     (log/warn "Could not synchronize app %s because %s." app-id (str e)))))))))))
     (catch Throwable e

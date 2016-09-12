@@ -2,7 +2,8 @@
   (:require [org.zalando.stups.friboo.log :as log]
             [org.zalando.stups.friboo.config :as config]
             [org.zalando.stups.mint.worker.external.storage :as storage]
-            [org.zalando.stups.mint.worker.external.s3 :as s3]
+            [org.zalando.stups.mint.worker.external.bucket_storage :refer [writable?
+                                                                           StorageException]]
             [org.zalando.stups.mint.worker.job.sync-client :refer [sync-client]]
             [org.zalando.stups.mint.worker.job.sync-user :refer [sync-user]]
             [org.zalando.stups.mint.worker.job.sync-password :refer [sync-password]]
@@ -19,13 +20,13 @@
     (if-not (> s3_errors
                max-s3-errors)
             (let [app        (storage/get-app storage-url id tokens)
-                  unwritable (doall (remove #(s3/writable? % id) (:s3_buckets app)))]
+                  unwritable (doall (remove #(writable? % id) (:s3_buckets app)))]
               (if (seq unwritable)
                   ; unwritable buckets! skip sync.
                   (do
-                    (log/debug "Skipping sync for app %s because there are unwritable S3 buckets: %s" id unwritable)
+                    (log/debug "Skipping sync for app %s because there are unwritable buckets: %s" id unwritable)
                     ; now throw exception so that it will be handled in run.clj
-                    (throw (s3/S3Exception (str "Unwritable S3 buckets: "
+                    (throw (StorageException (str "Unwritable buckets: "
                                                 (pr-str unwritable))
                                            {:s3_buckets unwritable})))
                   ; writable buckets, presumably. do sync.
@@ -42,4 +43,4 @@
                       (log/debug "Skipping password and client rotation for inactive app %s" id))
                     (log/info "Synced app %s." id))))
             ; else
-            (log/debug "Skipping sync for app %s because could not write to S3 repeatedly" id))))
+            (log/debug "Skipping sync for app %s because could not write to bucket storage repeatedly" id))))

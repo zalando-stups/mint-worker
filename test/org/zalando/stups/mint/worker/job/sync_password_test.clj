@@ -11,7 +11,8 @@
             [org.zalando.stups.mint.worker.job.common :as c]
             [org.zalando.stups.mint.worker.external.services :as services]
             [org.zalando.stups.mint.worker.external.storage :as storage]
-            [org.zalando.stups.mint.worker.external.s3 :as s3])
+            [org.zalando.stups.mint.worker.external.bucket_storage :refer [save-user
+                                                                           StorageException]])
   (:import (com.amazonaws.services.s3.model PutObjectResult)))
 
 (def test-app
@@ -39,7 +40,7 @@
 (deftest should-not-skip-if-never-rotated
   (let [calls (atom {})]
     (with-redefs [services/generate-new-password (constantly test-response)
-                  s3/save-user (constantly (PutObjectResult.))
+                  save-user (constantly (PutObjectResult.))
                   services/commit-password (track calls :commit)
                   storage/update-status (track calls :update)]
       (sync-password test-app
@@ -61,7 +62,7 @@
         test-app (assoc test-app :last_password_rotation past)
         calls (atom {})]
     (with-redefs [services/generate-new-password (constantly test-response)
-                  s3/save-user (constantly (PutObjectResult.))
+                  save-user (constantly (PutObjectResult.))
                   services/commit-password (track calls :commit)
                   storage/update-status (track calls :update)]
       (sync-password test-app
@@ -74,7 +75,7 @@
 (deftest should-throw-if-bucket-unwritable
   (let [calls (atom {})]
     (with-redefs [services/generate-new-password (constantly test-response)
-                  s3/save-user (sequentially (s3/S3Exception "bad s3" {}) (PutObjectResult.))
+                  save-user (sequentially (StorageException "bad s3" {}) (PutObjectResult.))
                   services/commit-password (track calls :commit)
                   storage/update-status (track calls :update)]
       (try
@@ -84,7 +85,7 @@
         (is false)
         (catch Exception error
           (is (:type (ex-data error))
-              "S3Exception")))
+              "StorageException")))
       (is (= 0 (count (:commit @calls))))
       (is (= 0 (count (:update @calls)))))))
 

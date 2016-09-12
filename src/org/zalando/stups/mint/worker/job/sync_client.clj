@@ -5,7 +5,7 @@
             [org.zalando.stups.mint.worker.job.common :as c]
             [org.zalando.stups.mint.worker.external.services :as services]
             [org.zalando.stups.mint.worker.external.storage :as storage]
-            [org.zalando.stups.mint.worker.external.s3 :as s3]
+            [org.zalando.stups.mint.worker.external.bucket_storage :refer [save-client]]
             [clojure.string :as str]))
 
 (defn sync-client
@@ -28,8 +28,8 @@
                 transaction-id (:txid generate-client-response)
                 client-secret (:client_secret generate-client-response)]
             ; Step 2: distribute it
-            (log/debug "Saving the new client for %s to S3 buckets: %s..." id s3_buckets)
-            (if-let [error (c/has-error (c/busy-map #(s3/save-client % id new-client-id client-secret)
+            (log/debug "Saving the new client for %s to buckets: %s..." id s3_buckets)
+            (if-let [error (c/has-error (c/busy-map #(save-client % id new-client-id client-secret)
                                                     s3_buckets))]
               (do
                 (log/debug "Could not save client to bucket: %s" (str error))
