@@ -29,7 +29,7 @@
                 client-secret (:client_secret generate-client-response)]
             ; Step 2: distribute it
             (log/debug "Saving the new client for %s to buckets: %s..." id s3_buckets)
-            (if-let [error (c/has-error (c/busy-map #(save-client % id new-client-id client-secret)
+            (if-let [error (c/has-error (c/busy-map #(save-client % id new-client-id client-secret configuration tokens)
                                                     s3_buckets))]
               (do
                 (log/debug "Could not save client to bucket: %s" (str error))

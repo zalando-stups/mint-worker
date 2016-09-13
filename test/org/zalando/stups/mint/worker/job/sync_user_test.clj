@@ -12,13 +12,14 @@
             [org.zalando.stups.mint.worker.external.storage :as storage]
             [org.zalando.stups.mint.worker.external.s3 :as s3]
             [org.zalando.stups.mint.worker.external.bucket_storage :refer [save-client
-                                                                           StorageException]])
+                                                                           StorageException]]
+            [org.zalando.stups.mint.worker.external.gcs :as gcs])
   (:import (com.amazonaws.services.s3.model PutObjectResult)))
 
 (def test-app
   {:id "kio"
    :username "kio-user"
-   :s3_buckets ["bucket-one" "bucket-two"]})
+   :s3_buckets ["bucket-one" "bucket-two" "gs://bucket-three"]})
 
 (def test-kio-app
   {:id "kio"
@@ -108,6 +109,7 @@
         calls (atom {})]
     (with-redefs [services/create-or-update-user (constantly test-response)
                   s3/put-string (constantly (PutObjectResult.))
+                  gcs/post-object (constantly nil)
                   storage/update-status (track calls :update)]
       (let [app (sync-user test-app
                            test-kio-app
@@ -123,6 +125,7 @@
         calls (atom {})]
     (with-redefs [services/create-or-update-user (constantly test-response)
                   s3/put-string (sequentially (PutObjectResult.) (StorageException "bad s3" {}))
+                  gcs/post-object (sequentially nil (StorageException "bad gcs" {}))
                   storage/update-status (track calls :update)]
       (try
         (sync-user test-app

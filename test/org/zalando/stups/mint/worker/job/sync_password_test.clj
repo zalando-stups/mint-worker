@@ -12,13 +12,15 @@
             [org.zalando.stups.mint.worker.external.services :as services]
             [org.zalando.stups.mint.worker.external.storage :as storage]
             [org.zalando.stups.mint.worker.external.bucket_storage :refer [save-user
-                                                                           StorageException]])
+                                                                           StorageException]]
+            [org.zalando.stups.mint.worker.external.s3 :as s3]
+            [org.zalando.stups.mint.worker.external.gcs :as gcs])
   (:import (com.amazonaws.services.s3.model PutObjectResult)))
 
 (def test-app
   {:id "kio"
    :username "kio-user"
-   :s3_buckets ["bucket-one" "bucket-two"]})
+   :s3_buckets ["bucket-one" "bucket-two" "gs://bucket-three"]})
 
 (def test-response
   {:password "admin"
@@ -40,7 +42,8 @@
 (deftest should-not-skip-if-never-rotated
   (let [calls (atom {})]
     (with-redefs [services/generate-new-password (constantly test-response)
-                  save-user (constantly (PutObjectResult.))
+                  s3/put-string (constantly (PutObjectResult.))
+                  gcs/post-object (constantly nil)
                   services/commit-password (track calls :commit)
                   storage/update-status (track calls :update)]
       (sync-password test-app
@@ -62,7 +65,8 @@
         test-app (assoc test-app :last_password_rotation past)
         calls (atom {})]
     (with-redefs [services/generate-new-password (constantly test-response)
-                  save-user (constantly (PutObjectResult.))
+                  s3/put-string (constantly (PutObjectResult.))
+                  gcs/post-object (constantly nil)
                   services/commit-password (track calls :commit)
                   storage/update-status (track calls :update)]
       (sync-password test-app
@@ -75,7 +79,8 @@
 (deftest should-throw-if-bucket-unwritable
   (let [calls (atom {})]
     (with-redefs [services/generate-new-password (constantly test-response)
-                  save-user (sequentially (StorageException "bad s3" {}) (PutObjectResult.))
+                  s3/put-string (sequentially (StorageException "bad s3" {}) (PutObjectResult.))
+                  gcs/post-object (sequentially (StorageException "bad gcs" {}) nil)
                   services/commit-password (track calls :commit)
                   storage/update-status (track calls :update)]
       (try
