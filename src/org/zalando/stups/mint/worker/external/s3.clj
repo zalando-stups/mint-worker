@@ -40,7 +40,7 @@
       (.setRegion s3client region))
     (.putObject s3client request)))
 
-(defmethod writable? :s3 [bucket-name app-id]
+(defmethod writable? :s3 [bucket-name app-id & _]
   {:pre [(not (str/blank? bucket-name))
          (not (str/blank? app-id))]}
   (try
@@ -53,7 +53,7 @@
       (log/debug "S3 bucket %s with prefix %s is NOT WRITABLE. Reason %s." bucket-name app-id (str e))
       false)))
 
-(defmethod save-user :s3 [bucket-name app-id username password]
+(defmethod save-user :s3 [bucket-name app-id username password & _]
   {:pre [(not (str/blank? bucket-name))
          (not (str/blank? app-id))]}
   (try
@@ -67,7 +67,7 @@
                          :message  (.getMessage e)
                          :original e}))))
 
-(defmethod save-client :s3 [bucket-name app-id client-id client-secret]
+(defmethod save-client :s3 [bucket-name app-id client-id client-secret & _]
   {:pre [(not (str/blank? bucket-name))
          (not (str/blank? app-id))]}
   (try

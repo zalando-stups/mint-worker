@@ -20,7 +20,7 @@
     (if-not (> s3_errors
                max-s3-errors)
             (let [app        (storage/get-app storage-url id tokens)
-                  unwritable (doall (remove #(writable? % id) (:s3_buckets app)))]
+                  unwritable (doall (remove #(writable? % id configuration tokens) (:s3_buckets app)))]
               (if (seq unwritable)
                   ; unwritable buckets! skip sync.
                   (do

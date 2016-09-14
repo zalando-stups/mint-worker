@@ -62,7 +62,7 @@
             (when (and (not is_client_confidential)
                        (nil? client_id))
               (log/debug "Saving non-confidential client ID %s for app %s..." new-client-id id)
-              (when-let [error (c/has-error (c/busy-map #(save-client % id new-client-id nil)
+              (when-let [error (c/has-error (c/busy-map #(save-client % id new-client-id nil configuration tokens)
                                                         s3_buckets))]
                 (log/debug "Could not save client ID: %s" (str error))
                 ; throw to update s3_errors once outside

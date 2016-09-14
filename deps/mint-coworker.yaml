@@ -1,0 +1,68 @@
+swagger: "2.0"
+
+info:
+  version: "0.0.1"
+  title: Mint Coworker
+  description: Mint Coworker is a proxy for mint worker
+
+schemes:
+    - "https"
+basePath: /v1
+produces:
+  - application/json
+consumes:
+  - application/json
+
+security:
+  - oauth2: [uid]
+
+paths:
+  /{bucket}/{path}:
+    post:
+      summary: Store object in bucket at path
+      description: |
+        Store an object in a bucket at the specified path.
+      operationId: storeObject
+      tags:
+        - buckets
+      consumes:
+        - application/octet-stream
+      parameters:
+        - $ref: "#/parameters/bucket"
+        - $ref: "#/parameters/path"
+        - name: data
+          in: body
+          required: true
+          schema:
+            description: binary
+            type: string
+            format: byte
+      responses:
+        204:
+          description: object was successfully stored
+        404:
+          description: bucket was not found or unauthorized
+
+parameters:
+  bucket:
+    name: bucket
+    in: path
+    type: string
+    description: bucket name
+    required: true
+    pattern: "^[a-z][a-z0-9-_.]*[a-z0-9]$"
+  path:
+    name: path
+    in: path
+    type: string
+    description: object path
+    required: true
+    pattern: "^.{1,1024}$"
+
+securityDefinitions:
+  oauth2:
+    type: oauth2
+    flow: implicit
+    authorizationUrl: https://auth.zalando.com/z/oauth2/
+    scopes:
+      uid: Unique identifier of the user accessing the service.
