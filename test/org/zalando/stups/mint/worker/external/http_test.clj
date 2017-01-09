@@ -4,6 +4,10 @@
             [clj-http.client :as clj-http]
             [org.zalando.stups.mint.worker.external.http :as client]))
 
+(def expected-default-options
+  {:socket-timeout 10000
+   :conn-timeout 10000})
+
 (deftest test-http-wrapper
 
   (testing "http options are merged with default"
@@ -15,8 +19,7 @@
           (is
             (=
               (second (first (:get @calls)))
-              {:socket-timeout 1000
-               :conn-timeout 1000}))))
+              expected-default-options))))
 
      (testing "put"
        (let [calls (atom {})]
@@ -25,8 +28,7 @@
            (is
              (=
                (second (first (:put @calls)))
-               {:socket-timeout 1000
-                :conn-timeout 1000}))))
+               expected-default-options))))
 
       (testing "patch"
         (let [calls (atom {})]
@@ -35,8 +37,7 @@
             (is
               (=
                 (second (first (:patch @calls)))
-                {:socket-timeout 1000
-                 :conn-timeout 1000}))))
+                expected-default-options))))
 
 
        (testing "post"
@@ -46,8 +47,7 @@
              (is
                (=
                  (second (first (:post @calls)))
-                 {:socket-timeout 1000
-                  :conn-timeout 1000}))))
+                 expected-default-options))))
 
         (testing "delete"
           (let [calls (atom {})]
@@ -56,5 +56,4 @@
               (is
                 (=
                   (second (first (:delete @calls)))
-                  {:socket-timeout 1000
-                   :conn-timeout 1000})))))))))))
+                  expected-default-options)))))))))))

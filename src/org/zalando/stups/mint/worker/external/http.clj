@@ -2,8 +2,8 @@
   (:require [clj-http.client :as client]))
 
 (def ^:private default-http-options
-  {:socket-timeout 1000
-   :conn-timeout 1000})
+  {:socket-timeout 10000
+   :conn-timeout 10000})
 
 (defn get [url & [options]]
   (client/get url (merge default-http-options (or options {}))))
