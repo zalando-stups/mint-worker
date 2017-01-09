@@ -3,7 +3,7 @@
             [org.zalando.stups.friboo.log :as log]
             [org.zalando.stups.friboo.config :as config]
             [clojure.string :as str]
-            [clj-http.client :as client]
+            [org.zalando.stups.mint.worker.external.http :as client]
             [org.zalando.stups.mint.worker.external.bucket_storage :refer [writable?
                                                                            save-user
                                                                            save-client

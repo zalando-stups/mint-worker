@@ -1,6 +1,6 @@
 (ns org.zalando.stups.mint.worker.external.etcd-test
   (:require [clojure.test :refer :all]
-            [clj-http.client :as client]
+            [org.zalando.stups.mint.worker.external.http :as client]
             [org.zalando.stups.mint.worker.external.etcd :as etcd]))
 
 (defn mock-put-error
