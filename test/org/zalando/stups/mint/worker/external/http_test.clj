@@ -5,8 +5,8 @@
             [org.zalando.stups.mint.worker.external.http :as client]))
 
 (def expected-default-options
-  {:socket-timeout 10000
-   :conn-timeout 10000})
+  {:socket-timeout 60000
+   :conn-timeout 60000})
 
 (deftest test-http-wrapper
 
