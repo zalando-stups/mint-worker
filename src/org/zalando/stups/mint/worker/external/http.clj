@@ -6,16 +6,16 @@
    :conn-timeout 1000})
 
 (defn get [url & [options]]
-  (client/get url (merge default-http-options options)))
+  (client/get url (merge default-http-options (or options {}))))
 
 (defn post [url & [options]]
-  (client/post url (merge default-http-options options)))
+  (client/post url (merge default-http-options (or options {}))))
 
 (defn patch [url & [options]]
-  (client/patch url (merge default-http-options options)))
+  (client/patch url (merge default-http-options (or options {}))))
 
 (defn put [url & [options]]
-  (client/put url (merge default-http-options options)))
+  (client/put url (merge default-http-options (or options {}))))
 
 (defn delete [url & [options]]
-  (client/delete url (merge default-http-options options)))
+  (client/delete url (merge default-http-options (or options {}))))
