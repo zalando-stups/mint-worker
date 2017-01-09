@@ -1,0 +1,21 @@
+(ns org.zalando.stups.mint.worker.external.http
+  (:require [clj-http.client :as client]))
+
+(def ^:private default-http-options
+  {:socket-timeout 1000
+   :conn-timeout 1000})
+
+(defn get [url & [options]]
+  (client/get url (merge default-http-options options)))
+
+(defn post [url & [options]]
+  (client/post url (merge default-http-options options)))
+
+(defn patch [url & [options]]
+  (client/patch url (merge default-http-options options)))
+
+(defn put [url & [options]]
+  (client/put url (merge default-http-options options)))
+
+(defn delete [url & [options]]
+  (client/delete url (merge default-http-options options)))

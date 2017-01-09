@@ -1,5 +1,5 @@
 (ns org.zalando.stups.mint.worker.external.etcd
-  (:require [clj-http.client :as client]
+  (:require [org.zalando.stups.mint.worker.external.http :as client]
             [org.zalando.stups.friboo.log :as log]))
 
 (defn refresh-lock

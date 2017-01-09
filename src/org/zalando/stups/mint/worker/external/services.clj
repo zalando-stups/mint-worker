@@ -1,6 +1,6 @@
 (ns org.zalando.stups.mint.worker.external.services
   (:require [org.zalando.stups.friboo.ring :refer [conpath]]
-            [clj-http.client :as client]
+            [org.zalando.stups.mint.worker.external.http :as client]
             [org.zalando.stups.friboo.system.oauth2 :as oauth2]
             [clojure.string :as str]))
 
